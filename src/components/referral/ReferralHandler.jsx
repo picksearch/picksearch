@@ -1,0 +1,86 @@
+import { useEffect, useRef } from "react";
+import { auth } from "@/api/auth";
+import { processReferral } from "@/api/functions";
+import { useQueryClient } from "@tanstack/react-query";
+
+// 리퍼럴 보상 구조:
+// - 신규 가입자: 3 서치코인
+// - 추천 코드로 가입 시: 가입자 13코인 (3+10), 추천인 3코인
+
+export default function ReferralHandler() {
+  const queryClient = useQueryClient();
+  const processedRef = useRef(false);
+
+  // Step 1: URL에서 추천 코드 저장
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    
+    if (!refCode) return;
+    
+    console.log('[Referral] URL에서 추천 코드 감지:', refCode);
+    localStorage.setItem('pending_referral_code', refCode);
+    
+    // URL 정리 (쿼리파라미터만 제거)
+    const newUrl = window.location.pathname + window.location.hash;
+    window.history.replaceState({}, '', newUrl);
+  }, []);
+
+  // Step 2: 가입/로그인 후 보너스 처리 (백엔드 함수 호출)
+  useEffect(() => {
+    const processReferral = async () => {
+      if (processedRef.current) return;
+      
+      try {
+        const isAuthenticated = await auth.isAuthenticated();
+        if (!isAuthenticated) {
+          console.log('[Referral] 미인증 상태');
+          return;
+        }
+
+        const currentUser = await auth.me();
+        console.log('[Referral] 현재 유저:', currentUser.email, 'referred_by:', currentUser.referred_by, 'search_coins:', currentUser.search_coins);
+
+        // 이미 referred_by가 실제로 설정된 경우 스킵 (existing_user 제외)
+        if (currentUser.referred_by && currentUser.referred_by !== 'existing_user') {
+          console.log('[Referral] 이미 추천인 있음, 스킵');
+          localStorage.removeItem('pending_referral_code');
+          return;
+        }
+
+        // 이미 코인을 받은 경우 스킵
+        if ((currentUser.search_coins || 0) > 0) {
+          console.log('[Referral] 이미 코인 받음, 스킵');
+          localStorage.removeItem('pending_referral_code');
+          return;
+        }
+
+        processedRef.current = true;
+
+        const pendingRefCode = localStorage.getItem('pending_referral_code');
+        console.log('[Referral] 대기중인 추천코드:', pendingRefCode);
+
+        // 백엔드 함수 호출
+        const response = await processReferral({
+          referralCode: pendingRefCode || null
+        });
+
+        console.log('[Referral] 백엔드 응답:', response.data);
+
+        localStorage.removeItem('pending_referral_code');
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+
+      } catch (error) {
+        console.error('[Referral] 처리 오류:', error);
+        processedRef.current = false;
+      }
+    };
+
+    // 초기 실행 + 지연 실행 (로그인 완료 대기)
+    processReferral();
+    const timer = setTimeout(processReferral, 2000);
+    return () => clearTimeout(timer);
+  }, [queryClient]);
+
+  return null;
+}

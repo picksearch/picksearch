@@ -1,0 +1,609 @@
+import React, { useState } from "react";
+import { auth } from "@/api/auth";
+import { CreditTransaction, Survey, PricingConfig, SystemConfig, User } from "@/api/entities";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Shield, Coins, CheckCircle, XCircle, Clock, DollarSign, Settings, 
+  Users, Crown, UserCog, Home, LayoutDashboard, FileSpreadsheet, 
+  LogOut, Menu, X, ExternalLink, MessageSquare
+} from "lucide-react";
+import AdminSupportManager from "@/components/admin/AdminSupportManager";
+import SEOSettingsManager from "@/components/admin/SEOSettingsManager";
+import CustomerMemoModal from "@/components/admin/CustomerMemoModal";
+import CoinManager from "@/components/admin/CoinManager";
+import { motion, AnimatePresence } from "framer-motion";
+import { format } from "date-fns";
+import { Link, useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+
+// Import OrderManagement to use as a component
+import OrderManagement from "./OrderManagement";
+
+export default function AdminSettings() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedUserForMemo, setSelectedUserForMemo] = useState(null);
+
+  const { data: user, isLoading: userLoading, error: userError } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => auth.me(),
+    retry: false,
+  });
+
+  // Stats Queries (for Dashboard)
+  const { data: pendingCredits = [] } = useQuery({
+    queryKey: ['pendingCredits'],
+    queryFn: () => CreditTransaction.filter({ status: 'pending' }, '-created_date'),
+  });
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['allUsers'],
+    queryFn: () => User.list('-created_date'),
+  });
+
+  const { data: pendingSurveys = [] } = useQuery({
+    queryKey: ['pendingSurveysCount'],
+    queryFn: () => Survey.filter({ status: 'pending_media' }),
+  });
+
+  const { data: pricingConfigs = [] } = useQuery({
+    queryKey: ['pricingConfigs'],
+    queryFn: () => PricingConfig.list(),
+  });
+
+  const { data: systemConfig, refetch: refetchConfig } = useQuery({
+    queryKey: ['systemConfig'],
+    queryFn: () => SystemConfig.list(),
+  });
+
+  // Mutations
+  const updateConfigMutation = useMutation({
+    mutationFn: async ({ id, value }) => {
+      if (id) {
+        await SystemConfig.update(id, { value });
+      } else {
+        await SystemConfig.create({ 
+          key: 'bank_account', 
+          value, 
+          description: '무통장 입금 계좌 정보' 
+        });
+      }
+    },
+    onSuccess: () => {
+      refetchConfig();
+      alert('설정이 저장되었습니다.');
+    },
+  });
+
+  const approveCreditMutation = useMutation({
+    mutationFn: async (transaction) => {
+      // 더블 체크: 트랜잭션의 최신 상태를 서버에서 다시 확인
+      const currentTxs = await CreditTransaction.filter({ id: transaction.id });
+      if (!currentTxs || currentTxs.length === 0) {
+        throw new Error("트랜잭션을 찾을 수 없습니다.");
+      }
+      
+      const currentTx = currentTxs[0];
+      if (currentTx.status !== 'pending') {
+        throw new Error("이미 처리된 요청입니다.");
+      }
+
+      await CreditTransaction.update(transaction.id, { status: 'confirmed' });
+      const users = await User.filter({ email: transaction.user_email });
+      if (users.length > 0) {
+        const currentUser = users[0];
+        await User.update(currentUser.id, {
+          credits: (currentUser.credits || 0) + transaction.amount
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['pendingCredits']);
+      alert('크레딧 충전이 승인되었습니다.');
+    },
+    onError: (error) => {
+      queryClient.invalidateQueries(['pendingCredits']);
+      alert(error.message || '처리 중 오류가 발생했습니다.');
+    }
+  });
+
+  const rejectCreditMutation = useMutation({
+    mutationFn: async (transactionId) => {
+      await CreditTransaction.update(transactionId, { status: 'rejected' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['pendingCredits']);
+      alert('크레딧 충전이 거절되었습니다.');
+    },
+  });
+
+  const updatePricingMutation = useMutation({
+    mutationFn: async ({ id, price, discountRate }) => {
+      await PricingConfig.update(id, {
+        price: parseFloat(price),
+        discount_rate: parseFloat(discountRate)
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries(['pricingConfigs']),
+  });
+
+  const toggleUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, currentRole }) => {
+      const newRole = currentRole === 'admin' ? 'user' : 'admin';
+      await User.update(userId, { role: newRole });
+      return newRole;
+    },
+    onSuccess: (newRole) => {
+      queryClient.invalidateQueries(['allUsers']);
+      alert(`권한이 ${newRole === 'admin' ? '관리자' : '일반 사용자'}로 변경되었습니다.`);
+    },
+  });
+
+  React.useEffect(() => {
+    if (!userLoading && (userError || !user)) {
+      auth.redirectToLogin(window.location.pathname);
+    }
+  }, [user, userLoading, userError]);
+
+  if (userLoading) return <div className="flex h-screen items-center justify-center"><div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (!user || user.role !== 'admin') return <div className="flex h-screen items-center justify-center text-red-500 font-bold">관리자 권한이 필요합니다.</div>;
+
+  const MenuItem = ({ id, icon: Icon, label }) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+        activeTab === id 
+          ? 'bg-purple-50 text-purple-600 font-bold shadow-sm' 
+          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+      }`}
+    >
+      <Icon className="w-5 h-5" />
+      {isSidebarOpen && <span>{label}</span>}
+      {id === 'credit' && pendingCredits.length > 0 && (
+        <Badge className="ml-auto bg-yellow-100 text-yellow-700 border-0">{pendingCredits.length}</Badge>
+      )}
+      {id === 'orders' && pendingSurveys.length > 0 && (
+        <Badge className="ml-auto bg-orange-100 text-orange-700 border-0">{pendingSurveys.length}</Badge>
+      )}
+    </button>
+  );
+
+  const openInNewWindow = () => {
+    window.open(window.location.href, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100 overflow-hidden font-sans">
+      {/* Mobile/Small Screen Warning & New Window Button */}
+      <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
+        <Shield className="w-16 h-16 text-purple-400 mb-4" />
+        <h2 className="text-2xl font-bold text-white mb-2">PC 환경에 최적화된 페이지입니다</h2>
+        <p className="text-gray-300 mb-8 max-w-xs">
+          관리자 페이지는 복잡한 데이터 관리를 위해<br/>넓은 화면(PC)에서 이용해주세요.
+        </p>
+        <Button 
+          onClick={openInNewWindow}
+          className="bg-purple-600 hover:bg-purple-700 text-white text-lg h-14 px-8 rounded-2xl shadow-xl"
+        >
+          <ExternalLink className="w-5 h-5 mr-2" />
+          새 창에서 넓게 보기
+        </Button>
+        <button 
+          onClick={() => setSidebarOpen(false)}
+          className="mt-4 text-gray-500 text-sm underline hover:text-gray-300"
+        >
+          그냥 여기서 볼래요 (권장하지 않음)
+        </button>
+      </div>
+
+      {/* Sidebar */}
+      <motion.div 
+        initial={false}
+        animate={{ width: isSidebarOpen ? 260 : 80 }}
+        className="bg-white border-r border-gray-200 flex flex-col z-20 relative"
+      >
+        <div className="p-5 flex items-center gap-3 border-b border-gray-100 h-16">
+          <Shield className="w-8 h-8 text-purple-600 flex-shrink-0" />
+          {isSidebarOpen && <span className="font-bold text-xl text-gray-900 truncate">관리자 페이지</span>}
+        </div>
+
+        <div className="flex-1 py-4 px-3 space-y-2 overflow-y-auto">
+          <MenuItem id="dashboard" icon={LayoutDashboard} label="대시보드" />
+          <MenuItem id="orders" icon={FileSpreadsheet} label="주문/설문 관리" />
+          <MenuItem id="credit" icon={Coins} label="크레딧 관리" />
+          <MenuItem id="users" icon={Users} label="회원/고객 데이터" />
+          <MenuItem id="pricing" icon={DollarSign} label="가격 설정" />
+          <MenuItem id="support" icon={MessageSquare} label="고객센터" />
+          <MenuItem id="seo" icon={Settings} label="SEO 설정" />
+          <MenuItem id="coins" icon={Coins} label="서치코인 관리" />
+          <MenuItem id="system" icon={Settings} label="시스템 설정" />
+        </div>
+
+        <div className="p-3 border-t border-gray-100 space-y-2">
+          <Link to={createPageUrl("ClientHome")}>
+            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-purple-50 hover:text-purple-700 transition-all">
+              <Home className="w-5 h-5" />
+              {isSidebarOpen && <span className="font-medium">홈으로 돌아가기</span>}
+            </button>
+          </Link>
+          <button 
+            onClick={() => setSidebarOpen(!isSidebarOpen)}
+            className="w-full flex items-center justify-center p-2 text-gray-400 hover:text-gray-600"
+          >
+            {isSidebarOpen ? <Menu className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10">
+          <h2 className="text-lg font-bold text-gray-800">
+            {activeTab === 'dashboard' && '대시보드'}
+            {activeTab === 'orders' && '주문 및 설문 관리'}
+            {activeTab === 'credit' && '크레딧 충전 관리'}
+            {activeTab === 'users' && '회원 관리'}
+            {activeTab === 'pricing' && '가격 정책 설정'}
+            {activeTab === 'support' && '고객센터 관리'}
+            {activeTab === 'seo' && 'SEO(검색엔진 최적화) 설정'}
+            {activeTab === 'coins' && '서치코인 관리'}
+            {activeTab === 'system' && '시스템 환경설정'}
+          </h2>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-sm font-bold text-gray-800">{user.full_name || '관리자'}</div>
+              <div className="text-xs text-gray-500">{user.email}</div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-purple-600" />
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-8">
+          <div className="max-w-7xl mx-auto">
+            
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-yellow-100 flex items-center justify-center text-yellow-600">
+                        <Clock className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">충전 대기</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{pendingCredits.length}건</h3>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-600">
+                        <FileSpreadsheet className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">설문 승인 대기</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{pendingSurveys.length}건</h3>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">총 회원수</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{allUsers.length}명</h3>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center text-green-600">
+                        <DollarSign className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 font-medium">가격 정책</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{pricingConfigs.length}개 항목</h3>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>최근 가입 회원</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {allUsers.slice(0, 5).map(u => (
+                          <div key={u.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+                                {u.full_name?.[0] || 'U'}
+                              </div>
+                              <div>
+                                <div className="font-bold text-sm">{u.full_name}</div>
+                                <div className="text-xs text-gray-500">{u.email}</div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {format(new Date(u.created_date), 'yyyy.MM.dd')}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>최근 충전 요청</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {pendingCredits.length === 0 ? (
+                          <p className="text-center text-gray-500 py-8">대기중인 요청이 없습니다.</p>
+                        ) : (
+                          pendingCredits.slice(0, 5).map(c => (
+                            <div key={c.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-xl border border-yellow-100">
+                              <div>
+                                <div className="font-bold text-sm text-gray-800">{c.amount.toLocaleString()}원</div>
+                                <div className="text-xs text-gray-500">{c.user_email}</div>
+                              </div>
+                              <Badge className="bg-yellow-200 text-yellow-800 border-0">대기중</Badge>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'orders' && (
+              <div className="bg-white rounded-2xl shadow-sm p-6">
+                <OrderManagement />
+              </div>
+            )}
+
+            {activeTab === 'credit' && (
+               <div className="space-y-6">
+                 {pendingCredits.length === 0 ? (
+                   <div className="text-center py-20 bg-white rounded-2xl shadow-sm">
+                     <Coins className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                     <p className="text-lg text-gray-500">처리할 충전 요청이 없습니다.</p>
+                   </div>
+                 ) : (
+                   pendingCredits.map(transaction => (
+                     <Card key={transaction.id} className="border-0 shadow-sm hover:shadow-md transition-all">
+                       <CardContent className="p-6 flex items-center justify-between">
+                         <div className="flex-1">
+                           <div className="flex items-center gap-2 mb-2">
+                             <Badge className="bg-yellow-100 text-yellow-700 border-0">대기중</Badge>
+                             <span className="text-sm text-gray-500">{format(new Date(transaction.created_date), 'yyyy.MM.dd HH:mm')}</span>
+                           </div>
+                           <h3 className="text-xl font-bold text-gray-900 mb-1">
+                             {transaction.amount.toLocaleString()}원 충전 요청
+                           </h3>
+                           <p className="text-gray-600">{transaction.user_email} {transaction.depositor_name ? `(${transaction.depositor_name})` : ''}</p>
+                           {transaction.description && (
+                             <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600">
+                               {transaction.description}
+                             </div>
+                           )}
+                         </div>
+                         <div className="flex gap-2 ml-6">
+                           <Button 
+                             onClick={() => approveCreditMutation.mutate(transaction)}
+                             className="bg-green-500 hover:bg-green-600 text-white"
+                           >
+                             <CheckCircle className="w-4 h-4 mr-2" /> 승인
+                           </Button>
+                           <Button 
+                             onClick={() => rejectCreditMutation.mutate(transaction.id)}
+                             variant="outline"
+                             className="border-red-200 text-red-600 hover:bg-red-50"
+                           >
+                             <XCircle className="w-4 h-4 mr-2" /> 거절
+                           </Button>
+                         </div>
+                       </CardContent>
+                     </Card>
+                   ))
+                 )}
+               </div>
+            )}
+
+            {activeTab === 'users' && (
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle>전체 회원 목록 ({allUsers.length}명)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-left">
+                          <th className="py-3 px-4 text-sm font-medium text-gray-500">회원정보</th>
+                          <th className="py-3 px-4 text-sm font-medium text-gray-500">크레딧</th>
+                          <th className="py-3 px-4 text-sm font-medium text-gray-500">가입일</th>
+                          <th className="py-3 px-4 text-sm font-medium text-gray-500">권한</th>
+                          <th className="py-3 px-4 text-sm font-medium text-gray-500 text-right">관리</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allUsers.map(u => (
+                          <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                            <td className="py-4 px-4">
+                              <div className="font-bold text-gray-900">{u.full_name || '이름 없음'}</div>
+                              <div className="text-sm text-gray-500">{u.email}</div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="font-medium text-gray-700">{(u.credits || 0).toLocaleString()}</span>
+                            </td>
+                            <td className="py-4 px-4 text-sm text-gray-500">
+                              {format(new Date(u.created_date), 'yyyy.MM.dd')}
+                            </td>
+                            <td className="py-4 px-4">
+                              <Badge className={`${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'} border-0`}>
+                                {u.role === 'admin' ? '관리자' : '일반'}
+                              </Badge>
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedUserForMemo(u)}
+                                  className="text-xs h-8 border-blue-200 text-blue-600 hover:bg-blue-50"
+                                >
+                                  고객 데이터
+                                </Button>
+                                {u.id !== user.id && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      if (confirm(`권한을 변경하시겠습니까?`)) {
+                                        toggleUserRoleMutation.mutate({ userId: u.id, currentRole: u.role });
+                                      }
+                                    }}
+                                    className="text-xs h-8"
+                                  >
+                                    권한 변경
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {selectedUserForMemo && (
+                    <CustomerMemoModal 
+                      user={selectedUserForMemo} 
+                      isOpen={!!selectedUserForMemo} 
+                      onClose={() => setSelectedUserForMemo(null)} 
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === 'pricing' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pricingConfigs.map(config => (
+                  <Card key={config.id} className="border-0 shadow-sm hover:shadow-md transition-all">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <Badge className="bg-green-100 text-green-700 border-0 text-base py-1 px-3">
+                          {config.label}
+                        </Badge>
+                        <div className="text-xs text-gray-400">{config.question_type}</div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">기본 가격 (원)</label>
+                          <Input
+                            type="number"
+                            defaultValue={config.price}
+                            onBlur={(e) => updatePricingMutation.mutate({
+                              id: config.id,
+                              price: e.target.value,
+                              discountRate: config.discount_rate
+                            })}
+                            className="font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">할인율 (0.0 ~ 1.0)</label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            defaultValue={config.discount_rate}
+                            onBlur={(e) => updatePricingMutation.mutate({
+                              id: config.id,
+                              price: config.price,
+                              discountRate: e.target.value
+                            })}
+                            className="font-bold"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'support' && (
+              <AdminSupportManager />
+            )}
+
+            {activeTab === 'seo' && (
+              <SEOSettingsManager />
+            )}
+
+            {activeTab === 'coins' && (
+              <CoinManager />
+            )}
+
+            {activeTab === 'system' && (
+              <Card className="border-0 shadow-sm max-w-2xl">
+                <CardHeader>
+                  <CardTitle>시스템 설정</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      무통장 입금 계좌 정보
+                    </label>
+                    <div className="flex gap-3">
+                      <Input 
+                        defaultValue={systemConfig?.find(c => c.key === 'bank_account')?.value || ''}
+                        id="bank-account-input"
+                        placeholder="은행명 계좌번호 예금주"
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={() => {
+                          const input = document.getElementById('bank-account-input');
+                          updateConfigMutation.mutate({ 
+                            id: systemConfig?.find(c => c.key === 'bank_account')?.id, 
+                            value: input.value 
+                          });
+                        }}
+                      >
+                        저장
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      사용자가 크레딧 충전 페이지에서 보게 될 계좌 정보입니다.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
