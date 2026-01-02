@@ -101,13 +101,22 @@ export default function PaymentConfirmation() {
           </CardContent>
         </Card>
 
-        {/* Navigation Button */}
-        <Button
-          onClick={() => navigate(createPageUrl('MyPage'))}
-          className="w-full h-14 text-base bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold"
-        >
-          마이페이지로 이동
-        </Button>
+        {/* Navigation Buttons */}
+        <div className="space-y-3">
+          <Button
+            onClick={() => navigate('/mysurveys')}
+            className="w-full h-14 text-base bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold"
+          >
+            내 설문 보러가기
+          </Button>
+          <Button
+            onClick={() => navigate(createPageUrl('MyPage'))}
+            variant="outline"
+            className="w-full h-14 text-base border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl font-bold"
+          >
+            환불 계좌 정보 등록하기
+          </Button>
+        </div>
       </div>
     </div>
   );

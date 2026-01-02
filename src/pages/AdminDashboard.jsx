@@ -510,7 +510,7 @@ export default function AdminDashboard() {
             className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg rounded-xl h-12"
           >
             <CheckCircle className="w-5 h-5 mr-2" />
-            {startAllReviewMutation.isPending ? '시작 중...' : `검토중인 설문 전체 시작 (${reviewSurveys.length}건)`}
+            {startAllReviewMutation.isPending ? '시작 중...' : '검토중인 설문 전체 시작 (' + reviewSurveys.length + '건)'}
           </Button>
         </div>
       )}

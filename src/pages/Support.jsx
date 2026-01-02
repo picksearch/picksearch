@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -130,8 +131,8 @@ export default function Support() {
     mutationFn: async () => {
       if (!newTitle.trim() || !newContent.trim()) throw new Error("제목과 내용을 입력해주세요.");
       await SupportTicket.create({
-        title: newTitle,
-        content: newContent,
+        subject: newTitle,
+        message: newContent,
         user_email: user.email,
         status: 'open'
       });
@@ -150,7 +151,7 @@ export default function Support() {
     switch (status) {
       case 'open': return <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">답변대기</Badge>;
       case 'in_progress': return <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">처리중</Badge>;
-      case 'answered': return <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">답변완료</Badge>;
+      case 'resolved': return <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">답변완료</Badge>;
       case 'closed': return <Badge variant="secondary">종료</Badge>;
       default: return <Badge variant="outline">대기</Badge>;
     }
@@ -272,6 +273,7 @@ export default function Support() {
               <DialogContent className="max-w-md rounded-2xl">
                 <DialogHeader>
                   <DialogTitle>1:1 문의 작성</DialogTitle>
+                  <DialogDescription>궁금한 점이나 문의사항을 자세히 작성해주세요.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div className="space-y-2">
@@ -334,7 +336,7 @@ export default function Support() {
                     <AccordionTrigger className="hover:no-underline py-5">
                       <div className="flex flex-col items-start text-left w-full gap-2">
                         <div className="flex justify-between w-full items-center pr-2">
-                          <span className="font-bold text-lg text-gray-900 line-clamp-1 flex-1 mr-4">{ticket.title}</span>
+                          <span className="font-bold text-lg text-gray-900 line-clamp-1 flex-1 mr-4">{ticket.subject}</span>
                           {getStatusBadge(ticket.status)}
                         </div>
                         <span className="text-xs text-gray-400 font-medium bg-gray-50 px-2 py-1 rounded-lg">
@@ -349,27 +351,27 @@ export default function Support() {
                             <User className="w-4 h-4" />
                             문의 내용
                           </div>
-                          <p className="text-gray-600 whitespace-pre-wrap text-sm leading-relaxed">{ticket.content}</p>
+                          <p className="text-gray-600 whitespace-pre-wrap text-sm leading-relaxed">{ticket.message}</p>
                         </div>
 
-                        {ticket.admin_reply && (
+                        {ticket.admin_response && (
                           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2 text-sm font-bold text-blue-800">
                                 <MessageCircle className="w-4 h-4" />
                                 관리자 답변
                               </div>
-                              {ticket.answered_at && (
+                              {ticket.updated_at && (
                                 <span className="text-xs text-blue-400">
-                                  {formatKST(ticket.answered_at)}
+                                  {formatKST(ticket.updated_at)}
                                 </span>
                               )}
                             </div>
-                            <p className="text-blue-900 whitespace-pre-wrap text-sm leading-relaxed">{ticket.admin_reply}</p>
+                            <p className="text-blue-900 whitespace-pre-wrap text-sm leading-relaxed">{ticket.admin_response}</p>
                           </div>
                         )}
-                        
-                        {!ticket.admin_reply && (
+
+                        {!ticket.admin_response && (
                           <p className="text-center text-xs text-gray-400 py-2">
                             담당자가 내용을 확인하고 있습니다. 잠시만 기다려주세요.
                           </p>

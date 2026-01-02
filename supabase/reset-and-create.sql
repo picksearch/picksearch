@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS surveys (
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'review', 'live', 'scheduled', 'closed')),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'review', 'live', 'scheduled', 'closed', 'rejected')),
   survey_type TEXT DEFAULT 'paid' CHECK (survey_type IN ('free', 'paid')),
   secret_key TEXT UNIQUE,
   completion_secret_code TEXT,

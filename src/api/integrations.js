@@ -11,22 +11,30 @@ export const Core = {
   UploadPrivateFile
 };
 
-// Invoke LLM (calls Supabase Edge Function)
+// Invoke LLM (calls Vercel API)
 export async function InvokeLLM(options) {
   const { prompt, system_prompt, model = 'gpt-4o-mini', response_json_schema } = options;
 
   try {
-    const { data, error } = await supabase.functions.invoke('invoke-llm', {
-      body: {
+    const response = await fetch('/api/v1/ai/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         prompt,
         system_prompt,
         model,
         response_json_schema
-      }
+      })
     });
 
-    if (error) throw error;
-    return data;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'AI 요청 실패');
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('InvokeLLM error:', error);
     throw error;
