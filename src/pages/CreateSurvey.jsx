@@ -600,6 +600,7 @@ export default function CreateSurvey() {
           completion_secret_code: completionSecretCode,
           target_participants: 0,
           status: statusToSave,
+          payment_status: 'unpaid',
           landing_enabled: useLandingPage,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
@@ -722,6 +723,7 @@ export default function CreateSurvey() {
           completion_secret_code: completionSecretCode,
           target_participants: 0,
           status: 'draft',
+          payment_status: 'unpaid',
           landing_enabled: useLandingPage,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
@@ -735,13 +737,25 @@ export default function CreateSurvey() {
         surveyId = newSurvey.id;
       }
 
+      // 리커트척도 기본값
+      const likertDefaults = ['전혀 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다'];
+
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
+
+        // 리커트척도일 경우 빈 선택지를 기본값으로 채움
+        let finalOptions = q.options || [];
+        if (q.question_type === 'likert_scale') {
+          finalOptions = (q.options || ['', '', '', '', '']).map((opt, idx) =>
+            (opt && opt.trim()) ? opt : likertDefaults[idx]
+          );
+        }
+
         await Question.create({
           survey_id: surveyId,
           question_text: q.question_text,
           question_type: q.question_type,
-          options: q.options || [],
+          options: finalOptions,
           image_urls: q.image_urls || [],
           image_descriptions: q.image_descriptions || [],
           order: i
@@ -901,11 +915,17 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
         }
       });
 
-      const parsed = result.questions.map((q, idx) => ({
+      // Handle various response structures from AI
+      const questionsData = result.questions || result.survey?.questions || [];
+      if (questionsData.length === 0) {
+        throw new Error('AI가 질문을 생성하지 못했습니다.');
+      }
+
+      const parsed = questionsData.map((q, idx) => ({
         id: Date.now() + idx,
-        question_text: q.question_text,
-        question_type: q.question_type,
-        options: q.options || [],
+        question_text: q.question_text || q.question || q.text || '',
+        question_type: q.question_type || q.type || 'multiple_choice',
+        options: q.options || q.choices || [],
         image_urls: [],
         image_descriptions: [],
         order: idx,
@@ -960,11 +980,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
       });
     }
     if (q.question_type === 'likert_scale') {
-      return q.options && q.options.length === 5 && q.options.every((o) => {
-        if (typeof o === 'string') return o.trim();
-        if (typeof o === 'object' && o !== null) return o.label?.trim() || o.value;
-        return false;
-      });
+      // 리커트척도는 선택지가 비어있어도 기본값으로 생성 가능
+      return true;
     }
     if (q.question_type === 'image_choice') return q.image_urls && q.image_urls.length === 2;
     if (q.question_type === 'image_banner') return q.image_urls && q.image_urls.length === 1;
@@ -2014,6 +2031,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                 👆 참여자는 5개 척도 중 하나를 선택합니다
                               </p>
                             </div>
+                            <p className="text-xs text-red-500 font-medium mb-1">
+                              선택지 값을 입력하지 않을 경우, 예시대로 생성됩니다.
+                            </p>
                             {[
                               { value: 1, placeholder: '예: 전혀 그렇지 않다' },
                               { value: 2, placeholder: '예: 그렇지 않다' },
@@ -2032,15 +2052,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                         updateQuestion(question.id, { ...question, options: newOptions });
                                       }}
                                       placeholder={item.placeholder}
-                                      className={`rounded-xl ${!question.options?.[idx] || !question.options[idx].trim() ?
-                                          'border-2 border-red-300 focus:border-red-500' :
-                                          'border-gray-200'}`
-                                      } />
-
+                                      className="rounded-xl border-gray-200" />
                                   </div>
-                                  {(!question.options?.[idx] || !question.options[idx].trim()) &&
-                                    <p className="text-xs text-red-500 ml-6">* 필수 입력칸입니다</p>
-                                  }
                                 </div>
                               )}
                           </CardContent>

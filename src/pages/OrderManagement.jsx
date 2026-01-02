@@ -6,21 +6,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Download, CheckCircle, XCircle, Clock, Calendar, FileSpreadsheet, ExternalLink, Trash2, Edit, Copy } from "lucide-react";
+import { Shield, Download, CheckCircle, XCircle, Clock, Calendar, FileSpreadsheet, ExternalLink, Trash2, Edit, Copy, Search, ChevronDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { formatKST } from "@/utils";
 
 export default function OrderManagement() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [scheduleTimes, setScheduleTimes] = useState({});
   const [expandedSurvey, setExpandedSurvey] = useState(null);
   const [surveyQuestions, setSurveyQuestions] = useState({});
   const [surveyDepositors, setSurveyDepositors] = useState({});
+  const [surveyPaymentConfirmed, setSurveyPaymentConfirmed] = useState({});
   const [imageGalleryOpen, setImageGalleryOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [allImages, setAllImages] = useState([]);
+
+  // 입금 확인 팝업 상태
+  const [confirmingPayment, setConfirmingPayment] = useState(null);
 
   const [editingSurvey, setEditingSurvey] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -404,6 +417,23 @@ export default function OrderManagement() {
     }
   });
 
+  // 입금 확인 mutation
+  const confirmPaymentMutation = useMutation({
+    mutationFn: async (surveyId) => {
+      await Survey.update(surveyId, {
+        status: 'review',
+        payment_status: 'paid'
+      });
+    },
+    onSuccess: (_, surveyId) => {
+      setSurveyPaymentConfirmed(prev => ({ ...prev, [surveyId]: true }));
+      queryClient.invalidateQueries(['pendingSurveys']);
+      queryClient.invalidateQueries(['reviewSurveys']);
+      setConfirmingPayment(null);
+      alert('입금이 확인되었습니다. 설문이 검토중 상태로 변경되었습니다.');
+    },
+  });
+
   const deleteSurveyMutation = useMutation({
     mutationFn: async (surveyId) => {
       // Delete related payments first
@@ -484,12 +514,42 @@ export default function OrderManagement() {
     );
   }
 
-  const currentSurveys =
-    activeTab === 'pending' ? pendingSurveys :
-      activeTab === 'review' ? reviewSurveys :
-        activeTab === 'live' ? liveSurveys :
-          activeTab === 'rejected' ? rejectedSurveys :
-            closedSurveys;
+  // scheduled 설문 분리
+  const scheduledSurveys = liveSurveys.filter(s => s.status === 'scheduled');
+  const activeLiveSurveys = liveSurveys.filter(s => s.status === 'live');
+
+  // 검색 함수
+  const handleSearch = () => {
+    setSearchQuery(searchInput);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  // 전체 설문 목록
+  const allSurveys = [...pendingSurveys, ...reviewSurveys, ...scheduledSurveys, ...activeLiveSurveys, ...closedSurveys, ...rejectedSurveys];
+
+  // 현재 탭에 따른 설문 목록
+  const getBaseSurveys = () => {
+    switch (activeTab) {
+      case 'all': return allSurveys;
+      case 'pending': return pendingSurveys;
+      case 'review': return reviewSurveys;
+      case 'scheduled': return scheduledSurveys;
+      case 'live': return activeLiveSurveys;
+      case 'closed': return closedSurveys;
+      case 'rejected': return rejectedSurveys;
+      default: return allSurveys;
+    }
+  };
+
+  // 검색어로 필터링된 설문 목록
+  const currentSurveys = getBaseSurveys().filter(survey =>
+    !searchQuery || survey.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const currentImage = allImages[currentImageIndex];
 
@@ -700,84 +760,58 @@ export default function OrderManagement() {
         <p className="text-indigo-50">설문조사 주문 관리 및 승인</p>
       </motion.div>
 
-      {/* Stats - Now clickable */}
-      <div className="grid grid-cols-5 gap-2">
-        <Card
-          onClick={() => setActiveTab('pending')}
-          className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'pending' ? 'border-yellow-400 ring-2 ring-yellow-100' : 'border-transparent hover:border-yellow-200'
-            }`}
-        >
-          <CardContent className="p-3 text-center">
-            <Clock className={`w-5 h-5 mx-auto mb-1 ${activeTab === 'pending' ? 'text-yellow-600' : 'text-yellow-500'}`} />
-            <div className="text-xl font-bold text-gray-800">{pendingSurveys.length}</div>
-            <div className="text-xs text-gray-500">설문대기</div>
-          </CardContent>
-        </Card>
-        <Card
-          onClick={() => setActiveTab('review')}
-          className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'review' ? 'border-orange-400 ring-2 ring-orange-100' : 'border-transparent hover:border-orange-200'
-            }`}
-        >
-          <CardContent className="p-3 text-center">
-            <FileSpreadsheet className={`w-5 h-5 mx-auto mb-1 ${activeTab === 'review' ? 'text-orange-600' : 'text-orange-500'}`} />
-            <div className="text-xl font-bold text-gray-800">{reviewSurveys.length}</div>
-            <div className="text-xs text-gray-500">검토중</div>
-          </CardContent>
-        </Card>
-        <Card
-          onClick={() => setActiveTab('live')}
-          className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'live' ? 'border-green-400 ring-2 ring-green-100' : 'border-transparent hover:border-green-200'
-            }`}
-        >
-          <CardContent className="p-3 text-center">
-            <CheckCircle className={`w-5 h-5 mx-auto mb-1 ${activeTab === 'live' ? 'text-green-600' : 'text-green-500'}`} />
-            <div className="text-xl font-bold text-gray-800">{liveSurveys.length}</div>
-            <div className="text-xs text-gray-500">진행중</div>
-          </CardContent>
-        </Card>
-        <Card
-          onClick={() => setActiveTab('closed')}
-          className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'closed' ? 'border-gray-400 ring-2 ring-gray-100' : 'border-transparent hover:border-gray-200'
-            }`}
-        >
-          <CardContent className="p-3 text-center">
-            <CheckCircle className={`w-5 h-5 mx-auto mb-1 ${activeTab === 'closed' ? 'text-gray-600' : 'text-gray-500'}`} />
-            <div className="text-xl font-bold text-gray-800">{closedSurveys.length}</div>
-            <div className="text-xs text-gray-500">종료</div>
-          </CardContent>
-        </Card>
-        <Card
-          onClick={() => setActiveTab('rejected')}
-          className={`bg-white rounded-2xl shadow-sm border-2 cursor-pointer transition-all ${activeTab === 'rejected' ? 'border-red-400 ring-2 ring-red-100' : 'border-transparent hover:border-red-200'
-            }`}
-        >
-          <CardContent className="p-3 text-center">
-            <XCircle className={`w-5 h-5 mx-auto mb-1 ${activeTab === 'rejected' ? 'text-red-600' : 'text-red-500'}`} />
-            <div className="text-xl font-bold text-gray-800">{rejectedSurveys.length}</div>
-            <div className="text-xs text-gray-500">거절</div>
-          </CardContent>
-        </Card>
+      {/* Filter and Search */}
+      <div className="flex gap-3 items-center">
+        <Select value={activeTab} onValueChange={setActiveTab}>
+          <SelectTrigger className="w-40 rounded-xl bg-white border-gray-200">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 ({allSurveys.length})</SelectItem>
+            <SelectItem value="pending">입금대기 ({pendingSurveys.length})</SelectItem>
+            <SelectItem value="review">검토중 ({reviewSurveys.length})</SelectItem>
+            <SelectItem value="scheduled">진행예정 ({scheduledSurveys.length})</SelectItem>
+            <SelectItem value="live">진행중 ({activeLiveSurveys.length})</SelectItem>
+            <SelectItem value="closed">종료 ({closedSurveys.length})</SelectItem>
+            <SelectItem value="rejected">거절됨 ({rejectedSurveys.length})</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="flex-1 flex gap-2">
+          <Input
+            placeholder="설문 제목 검색..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="rounded-xl bg-white border-gray-200"
+          />
+          <Button
+            onClick={handleSearch}
+            variant="outline"
+            className="rounded-xl border-gray-200 px-4"
+          >
+            <Search className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
-      {activeTab === 'pending' && pendingSurveys.length > 0 && (
-        <Button
-          onClick={() => downloadExcelMutation.mutate(pendingSurveys)}
-          disabled={downloadExcelMutation.isPending}
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg rounded-xl h-12"
-        >
-          <Download className="w-5 h-5 mr-2" />
-          {downloadExcelMutation.isPending ? '다운로드 중...' : `전체 엑셀 다운로드 (${pendingSurveys.length}건)`}
-        </Button>
-      )}
-
+      {/* Action Buttons - 검토중일 때만 표시 */}
       {activeTab === 'review' && reviewSurveys.length > 0 && (
-        <div className="space-y-2">
+        <div className="flex gap-2 w-full">
+          <Button
+            onClick={() => downloadExcelMutation.mutate(reviewSurveys)}
+            disabled={downloadExcelMutation.isPending}
+            className="flex-1 min-w-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
+          >
+            <Download className="w-4 h-4 mb-1 flex-shrink-0" />
+            <span>{downloadExcelMutation.isPending ? '다운로드 중...' : <>전체 엑셀<br />다운로드</>}</span>
+          </Button>
           <Button
             onClick={openImageGallery}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg rounded-xl h-12"
+            className="flex-1 min-w-0 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
           >
-            <FileSpreadsheet className="w-5 h-5 mr-2" />
-            이미지 검수하기
+            <FileSpreadsheet className="w-4 h-4 mb-1 flex-shrink-0" />
+            <span>이미지<br />검수하기</span>
           </Button>
           <Button
             onClick={() => {
@@ -786,10 +820,10 @@ export default function OrderManagement() {
               }
             }}
             disabled={startAllReviewMutation.isPending}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg rounded-xl h-12"
+            className="flex-1 min-w-0 bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
           >
-            <CheckCircle className="w-5 h-5 mr-2" />
-            {startAllReviewMutation.isPending ? '시작 중...' : `검토중인 설문 전체 시작 (${reviewSurveys.length}건)`}
+            <CheckCircle className="w-4 h-4 mb-1 flex-shrink-0" />
+            <span>{startAllReviewMutation.isPending ? '시작 중...' : <>설문 일괄<br />시작하기</>}</span>
           </Button>
         </div>
       )}
@@ -828,7 +862,7 @@ export default function OrderManagement() {
                                   survey.status === 'rejected' ? 'bg-red-100 text-red-700 border-0' :
                                     'bg-gray-100 text-gray-700 border-0'
                         }>
-                          {survey.status === 'pending' ? '설문대기' :
+                          {survey.status === 'pending' ? '입금대기' :
                             survey.status === 'review' ? '검토중' :
                               survey.status === 'scheduled' ? '예약됨' :
                                 survey.status === 'live' ? '진행중' :
@@ -851,14 +885,33 @@ export default function OrderManagement() {
                   <div className="text-xs text-gray-500">
                     생성일: {formatKST(survey.created_at)}
                   </div>
-
-                  {surveyDepositors[survey.id] && (
-                    <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                      <span className="text-xs font-medium text-blue-700">
-                        입금자명: <span className="font-bold">{surveyDepositors[survey.id]}</span>
-                      </span>
+                  {survey.scheduled_start && (
+                    <div className="text-xs text-gray-500">
+                      설문 시작일: {formatKST(survey.scheduled_start)}
                     </div>
                   )}
+
+                  <div className="bg-blue-50 rounded-lg p-2 border border-blue-100 flex items-center justify-between">
+                    <span className="text-xs font-medium text-blue-700">
+                      입금자명: <span className="font-bold">{surveyDepositors[survey.id] || '-'}</span>
+                    </span>
+                    <Button
+                      onClick={() => {
+                        if (confirm('입금을 확인하시겠습니까?')) {
+                          confirmPaymentMutation.mutate(survey.id);
+                        }
+                      }}
+                      disabled={confirmPaymentMutation.isPending || survey.payment_status === 'paid'}
+                      size="sm"
+                      className={`text-xs h-6 px-3 rounded-lg ${
+                        survey.payment_status === 'paid'
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {survey.payment_status === 'paid' ? '입금 완료' : '입금 확인'}
+                    </Button>
+                  </div>
 
                   {/* 거절 사유 표시 */}
                   {survey.status === 'rejected' && survey.rejection_reason && (
@@ -896,22 +949,44 @@ export default function OrderManagement() {
                               </div>
                               <Badge className={
                                 question.question_type === 'multiple_choice' ? 'bg-blue-50 text-blue-600 border-0 text-xs' :
-                                  question.question_type === 'short_answer' ? 'bg-green-50 text-green-600 border-0 text-xs' :
-                                    question.question_type === 'image_banner' ? 'bg-pink-50 text-pink-600 border-0 text-xs' :
-                                      'bg-purple-50 text-purple-600 border-0 text-xs'
+                                  question.question_type === 'multiple_select' ? 'bg-blue-50 text-blue-600 border-0 text-xs' :
+                                    question.question_type === 'short_answer' ? 'bg-green-50 text-green-600 border-0 text-xs' :
+                                      question.question_type === 'likert_scale' ? 'bg-indigo-50 text-indigo-600 border-0 text-xs' :
+                                        question.question_type === 'numeric_rating' ? 'bg-yellow-50 text-yellow-600 border-0 text-xs' :
+                                          question.question_type === 'ranking' ? 'bg-orange-50 text-orange-600 border-0 text-xs' :
+                                            question.question_type === 'image_banner' ? 'bg-pink-50 text-pink-600 border-0 text-xs' :
+                                              question.question_type === 'image_choice' ? 'bg-purple-50 text-purple-600 border-0 text-xs' :
+                                                'bg-gray-50 text-gray-600 border-0 text-xs'
                               }>
                                 {question.question_type === 'multiple_choice' ? '객관식' :
-                                  question.question_type === 'short_answer' ? '주관식' :
-                                    question.question_type === 'image_banner' ? '이벤트배너' : '이미지선택'}
+                                  question.question_type === 'multiple_select' ? '다중선택' :
+                                    question.question_type === 'short_answer' ? '주관식' :
+                                      question.question_type === 'likert_scale' ? '리커트척도' :
+                                        question.question_type === 'numeric_rating' ? '수치평정' :
+                                          question.question_type === 'ranking' ? '순위형' :
+                                            question.question_type === 'image_banner' ? '이벤트배너' :
+                                              question.question_type === 'image_choice' ? '이미지선택' : '기타'}
                               </Badge>
                             </div>
                           </div>
 
-                          {question.question_type === 'multiple_choice' && question.options && (
-                            <div className="pl-8 space-y-1">
+                          {(question.question_type === 'multiple_choice' ||
+                            question.question_type === 'multiple_select' ||
+                            question.question_type === 'ranking') && question.options && (
+                              <div className="pl-8 space-y-1">
+                                {question.options.map((opt, optIdx) => (
+                                  <div key={optIdx} className="text-xs text-gray-600">
+                                    {optIdx + 1}. {typeof opt === 'string' ? opt : opt?.label || opt?.value || ''}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                          {question.question_type === 'likert_scale' && question.options && (
+                            <div className="pl-8 flex flex-wrap gap-2">
                               {question.options.map((opt, optIdx) => (
-                                <div key={optIdx} className="text-xs text-gray-600">
-                                  {optIdx + 1}. {opt}
+                                <div key={optIdx} className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg">
+                                  {optIdx + 1}: {typeof opt === 'string' ? opt : opt?.label || opt?.value || ''}
                                 </div>
                               ))}
                             </div>
@@ -953,50 +1028,52 @@ export default function OrderManagement() {
                     </div>
                   )}
 
-                  {survey.scheduled_start && (
-                    <div className="bg-blue-50 rounded-lg p-2 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm text-blue-700">
-                        예약 시작: {formatKST(survey.scheduled_start)}
-                      </span>
-                    </div>
-                  )}
 
                   {activeTab === 'review' && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2 items-center">
-                        <Input
-                          type="datetime-local"
-                          value={scheduleTimes[survey.id] || ''}
-                          onChange={(e) => setScheduleTimes({ ...scheduleTimes, [survey.id]: e.target.value })}
-                          className="flex-1 text-sm rounded-xl"
-                          placeholder="시작 시간 (선택)"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => startSurveyMutation.mutate({
-                            surveyId: survey.id,
-                            startTime: scheduleTimes[survey.id] ? new Date(scheduleTimes[survey.id]).toISOString() : null
-                          })}
-                          disabled={startSurveyMutation.isPending}
-                          className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          {scheduleTimes[survey.id] ? '예약 시작' : '즉시 시작'}
-                        </Button>
+                    <div className="flex gap-2">
+                      {survey.scheduled_start && (
                         <Button
                           onClick={() => {
-                            setRejectingSurvey(survey);
-                            setRejectionReason("");
+                            if (confirm(`${formatKST(survey.scheduled_start)}에 설문을 시작 예약하시겠습니까?`)) {
+                              startSurveyMutation.mutate({
+                                surveyId: survey.id,
+                                startTime: survey.scheduled_start
+                              });
+                            }
                           }}
-                          variant="outline"
-                          className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-sm"
+                          disabled={startSurveyMutation.isPending}
+                          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"
                         >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          거절
+                          <Clock className="w-4 h-4 mr-1" />
+                          시작 예약
                         </Button>
-                      </div>
+                      )}
+                      <Button
+                        onClick={() => {
+                          if (confirm('설문을 즉시 시작하시겠습니까?')) {
+                            startSurveyMutation.mutate({
+                              surveyId: survey.id,
+                              startTime: null
+                            });
+                          }
+                        }}
+                        disabled={startSurveyMutation.isPending}
+                        className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        즉시 시작
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setRejectingSurvey(survey);
+                          setRejectionReason("");
+                        }}
+                        variant="outline"
+                        className="border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-sm"
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        거절
+                      </Button>
                     </div>
                   )}
 

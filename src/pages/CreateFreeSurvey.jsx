@@ -241,6 +241,7 @@ export default function CreateFreeSurvey() {
           completion_secret_code: generateSecretKey(),
           target_participants: targetParticipants,
           status: 'draft',
+          payment_status: 'paid',
           scheduled_start: today.toISOString(),
           scheduled_end: endDate.toISOString(),
           creator_name: user?.custom_name || user?.full_name || user?.email || 'Unknown'
@@ -320,6 +321,7 @@ export default function CreateFreeSurvey() {
           completion_secret_code: generateSecretKey(),
           target_participants: targetParticipants,
           status: 'live',
+          payment_status: 'paid',
           scheduled_start: today.toISOString(),
           scheduled_end: endDate.toISOString(),
           creator_name: user?.custom_name || user?.full_name || user?.email || 'Unknown'
