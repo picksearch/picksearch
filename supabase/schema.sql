@@ -223,6 +223,17 @@ CREATE TABLE IF NOT EXISTS customer_memos (
 );
 
 -- =====================================================
+-- 13. SURVEY CATEGORIES TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS survey_categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, name)
+);
+
+-- =====================================================
 -- INDEXES for better performance
 -- =====================================================
 CREATE INDEX IF NOT EXISTS idx_surveys_user_id ON surveys(user_id);
@@ -237,6 +248,7 @@ CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transaction
 CREATE INDEX IF NOT EXISTS idx_coin_transactions_user_id ON coin_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
 CREATE INDEX IF NOT EXISTS idx_customer_memos_user_id ON customer_memos(user_id);
+CREATE INDEX IF NOT EXISTS idx_survey_categories_user_id ON survey_categories(user_id);
 
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -254,6 +266,7 @@ ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seo_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_memos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE survey_categories ENABLE ROW LEVEL SECURITY;
 
 -- PROFILES policies
 CREATE POLICY "Users can view own profile" ON profiles
@@ -388,6 +401,26 @@ CREATE POLICY "Admins can manage SEO settings" ON seo_settings
 
 -- CUSTOMER_MEMOS policies
 CREATE POLICY "Admins can manage customer memos" ON customer_memos
+  FOR ALL USING (
+    is_admin()
+  );
+
+-- SURVEY_CATEGORIES policies
+CREATE POLICY "Users can view own categories" ON survey_categories
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create categories" ON survey_categories
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own categories" ON survey_categories
+  FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all categories" ON survey_categories
+  FOR SELECT USING (
+    is_admin()
+  );
+
+CREATE POLICY "Admins can manage all categories" ON survey_categories
   FOR ALL USING (
     is_admin()
   );

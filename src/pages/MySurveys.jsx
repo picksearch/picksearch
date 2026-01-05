@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "@/api/auth";
-import { Survey, Question, Response } from "@/api/entities";
+import { Survey, Question, Response, SurveyCategory } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl, formatKST } from "@/utils";
@@ -35,10 +35,6 @@ export default function MySurveys() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [visibleCount, setVisibleCount] = useState(5);
   const [deletingCategory, setDeletingCategory] = useState(null);
-  const [customCategories, setCustomCategories] = useState(() => {
-    const saved = localStorage.getItem('customCategories');
-    return saved ? JSON.parse(saved) : [];
-  });
 
   const [editingSurvey, setEditingSurvey] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -82,6 +78,17 @@ export default function MySurveys() {
     refetchOnWindowFocus: true,
     refetchInterval: 10000,
     keepPreviousData: true
+  });
+
+  // DB에서 카테고리 목록 가져오기
+  const { data: dbCategories = [] } = useQuery({
+    queryKey: ['surveyCategories', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      return await SurveyCategory.list();
+    },
+    enabled: !!user,
+    staleTime: 30000
   });
 
   const updateSurveyCategoryMutation = useMutation({
@@ -201,26 +208,53 @@ export default function MySurveys() {
   };
 
   const allCategories = React.useMemo(() => {
+    // DB에서 가져온 카테고리 이름들
+    const dbCategoryNames = dbCategories.map(c => c.name);
+    // 설문에 할당된 카테고리들 (본인 설문에만 있는 것들)
     const surveyCategories = surveys
       .map((s) => s.category)
       .filter((c) => c && c.trim() !== '');
-    const combined = [...new Set([...surveyCategories, ...customCategories])];
+    // 합치고 중복 제거
+    const combined = [...new Set([...dbCategoryNames, ...surveyCategories])];
     return combined.sort();
-  }, [surveys, customCategories]);
+  }, [surveys, dbCategories]);
+
+  // 카테고리 생성 mutation
+  const createCategoryMutation = useMutation({
+    mutationFn: async (name) => {
+      return await SurveyCategory.create(name);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['surveyCategories']);
+    },
+    onError: (error) => {
+      alert(error.message);
+    }
+  });
+
+  // 카테고리 삭제 mutation (DB에서)
+  const deleteCategoryByNameMutation = useMutation({
+    mutationFn: async (name) => {
+      return await SurveyCategory.deleteByName(name);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['surveyCategories']);
+    }
+  });
 
   const addCategory = (name) => {
     if (name && name.trim() && !allCategories.includes(name.trim())) {
-      const newCategories = [...customCategories, name.trim()];
-      setCustomCategories(newCategories);
-      localStorage.setItem('customCategories', JSON.stringify(newCategories));
+      createCategoryMutation.mutate(name.trim());
     }
     setNewCategoryName('');
   };
 
   const removeCustomCategory = (name) => {
-    const newCategories = customCategories.filter(c => c !== name);
-    setCustomCategories(newCategories);
-    localStorage.setItem('customCategories', JSON.stringify(newCategories));
+    // DB에서 카테고리 삭제
+    const categoryInDb = dbCategories.find(c => c.name === name);
+    if (categoryInDb) {
+      deleteCategoryByNameMutation.mutate(name);
+    }
   };
 
   const defaultStatus = { label: '알수없음', color: 'bg-gray-100 text-gray-700', icon: AlertCircle };
@@ -348,7 +382,7 @@ export default function MySurveys() {
               </p>
             </div>
             <div className="flex flex-col gap-2 items-end">
-              <Link to={createPageUrl("CreateSurvey")}>
+              <Link to={`${createPageUrl("CreateSurvey")}?start=1`}>
                 <Button className="bg-[#3182F6] hover:bg-[#1B64DA] text-white rounded-xl h-9 font-bold text-xs shadow-sm px-3">
                   + 타겟 설문
                 </Button>
@@ -589,7 +623,7 @@ export default function MySurveys() {
                   <div className="flex flex-wrap gap-2">
                     {allCategories.map((cat) => {
                       const isFromSurvey = surveys.some(s => s.category === cat);
-                      const isCustom = customCategories.includes(cat);
+                      const isInDb = dbCategories.some(c => c.name === cat);
                       return (
                         <Badge key={cat} className="bg-blue-100 text-blue-700 border-0 pl-3 pr-2 py-1.5 flex items-center gap-2">
                           <Folder className="w-3 h-3" />
@@ -598,7 +632,7 @@ export default function MySurveys() {
                             onClick={() => {
                               if (isFromSurvey) {
                                 setDeletingCategory(cat);
-                              } else {
+                              } else if (isInDb) {
                                 removeCustomCategory(cat);
                               }
                             }}

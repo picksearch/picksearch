@@ -8,6 +8,7 @@ export { SupportTicket } from './supportTickets';
 export { FAQ } from './faqs';
 export { SEOSetting } from './seoSettings';
 export { CustomerMemo } from './customerMemos';
+export { SurveyCategory } from './surveyCategories';
 
 // Re-export auth as User for backward compatibility
 export { auth as User } from '../auth';

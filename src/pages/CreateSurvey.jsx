@@ -787,6 +787,10 @@ export default function CreateSurvey() {
       alert('설문 목적을 입력해주세요.');
       return;
     }
+    if (currentStep === 2 && !usagePurpose) {
+      alert('결과 활용 목적을 입력해주세요.');
+      return;
+    }
     if (currentStep === 3 && (!startDate || !endDate)) {
       alert('설문 기간을 선택해주세요.');
       return;

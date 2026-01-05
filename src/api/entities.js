@@ -8,6 +8,7 @@ export { SupportTicket } from './entities/supportTickets';
 export { FAQ } from './entities/faqs';
 export { SEOSetting } from './entities/seoSettings';
 export { CustomerMemo } from './entities/customerMemos';
+export { SurveyCategory } from './entities/surveyCategories';
 
 // Auth is now separate - import from './auth' instead
 export { auth as User } from './auth';
