@@ -563,18 +563,23 @@ export default function CreateFreeSurvey() {
                           <label className="text-xs font-medium text-gray-600">최대 선택 개수:</label>
                           <Input
                             type="number"
-                            min="1"
+                            min="2"
                             max={question.options.length}
                             value={question.max_selections || ''}
                             onChange={(e) => {
                               const val = e.target.value ? parseInt(e.target.value) : null;
-                              updateQuestion(question.id, { ...question, max_selections: val });
+                              // 선택지 개수보다 크면 선택지 개수로 제한
+                              const limitedVal = val && val > question.options.length ? question.options.length : val;
+                              updateQuestion(question.id, { ...question, max_selections: limitedVal });
                             }}
                             placeholder="제한 없음"
                             className="w-32 h-9 rounded-lg text-sm"
                           />
                           <span className="text-xs text-gray-500">(비워두면 제한 없음)</span>
                         </div>
+                        {question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) && (
+                          <p className="text-xs text-red-500">2 이상, 선택지 개수({question.options.length}개) 이하로 입력해주세요</p>
+                        )}
                       </div>
                     )}
                     {question.question_type === 'ranking' && (
@@ -588,18 +593,23 @@ export default function CreateFreeSurvey() {
                           <label className="text-xs font-medium text-gray-600">최대 순위 개수:</label>
                           <Input
                             type="number"
-                            min="1"
+                            min="2"
                             max={question.options.length}
                             value={question.max_selections || ''}
                             onChange={(e) => {
                               const val = e.target.value ? parseInt(e.target.value) : null;
-                              updateQuestion(question.id, { ...question, max_selections: val });
+                              // 선택지 개수보다 크면 선택지 개수로 제한
+                              const limitedVal = val && val > question.options.length ? question.options.length : val;
+                              updateQuestion(question.id, { ...question, max_selections: limitedVal });
                             }}
                             placeholder="제한 없음"
                             className="w-32 h-9 rounded-lg text-sm"
                           />
                           <span className="text-xs text-gray-500">(비워두면 전체 순위)</span>
                         </div>
+                        {question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) && (
+                          <p className="text-xs text-red-500">2 이상, 선택지 개수({question.options.length}개) 이하로 입력해주세요</p>
+                        )}
                       </div>
                     )}
                     {question.options.map((option, optIndex) => (
