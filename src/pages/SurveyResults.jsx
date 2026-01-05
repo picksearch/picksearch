@@ -34,6 +34,31 @@ export default function SurveyResults() {
   const [hyperReportData, setHyperReportData] = useState(null);
   const [generatingHyperReport, setGeneratingHyperReport] = useState(false);
 
+  // 모달이 열릴 때 body 스크롤 방지
+  React.useEffect(() => {
+    if (showHyperReport) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${window.scrollY}px`;
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+    };
+  }, [showHyperReport]);
+
   React.useEffect(() => {
     if (selectedSurvey?.isSample) {
       setAiReport(SAMPLE_AI_REPORT);
@@ -2077,7 +2102,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-8">
+                  <div className="flex-1 overflow-y-auto p-8 pb-24" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
                     {generatingHyperReport ?
                 <div className="flex flex-col items-center justify-center h-full space-y-6">
                         <motion.div
@@ -2122,7 +2147,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                             {hyperReportData}
                           </ReactMarkdown>
                         </div>
-                        <div className="mt-8 pt-6 border-t border-gray-200 flex justify-center">
+                        <div className="mt-8 pt-6 pb-8 border-t border-gray-200 flex justify-center">
                           <Button
                       onClick={() => {
                         const printWindow = window.open('', '_blank');
