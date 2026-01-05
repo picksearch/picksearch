@@ -51,10 +51,18 @@ export default function PaymentPage() {
     queryKey: ['bankAccount'],
     queryFn: async () => {
       const configs = await SystemConfig.filter({ key: 'bank_account' });
-      if (configs.length > 0) {
-        return configs[0].value;
+      if (configs.length > 0 && configs[0].value) {
+        const val = configs[0].value;
+        if (typeof val === 'object' && val.bankName) {
+          return {
+            bankName: val.bankName,
+            accountNumber: val.accountNumber,
+            accountHolder: val.accountHolder
+          };
+        }
+        return { display: val };
       }
-      return "신한은행 100-037-544100 (주식회사픽켓팅)";
+      return { bankName: '신한은행', accountNumber: '100-037-544100', accountHolder: '주식회사픽켓팅' };
     }
   });
 
@@ -153,7 +161,15 @@ export default function PaymentPage() {
 
   const handleCopyAccount = async () => {
     try {
-      await navigator.clipboard.writeText("100037544100");
+      let textToCopy = "신한은행 100-037-544100 (주식회사픽켓팅)";
+      if (bankAccount) {
+        if (bankAccount.display) {
+          textToCopy = bankAccount.display;
+        } else if (bankAccount.bankName) {
+          textToCopy = `${bankAccount.bankName} ${bankAccount.accountNumber} (${bankAccount.accountHolder})`;
+        }
+      }
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {

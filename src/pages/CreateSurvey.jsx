@@ -702,6 +702,7 @@ export default function CreateSurvey() {
           landing_enabled: useLandingPage,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+          total_cost: totalCost,
           target_options: targetSettings ? {
             cells: targetSettings,
             customAppText: customAppText || undefined,
@@ -727,6 +728,7 @@ export default function CreateSurvey() {
           landing_enabled: useLandingPage,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+          total_cost: totalCost,
           target_options: targetSettings ? {
             cells: targetSettings,
             customAppText: customAppText || undefined,

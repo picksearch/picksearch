@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Survey, Question, Response } from "@/api/entities";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { CheckCircle, ArrowRight, Copy, ArrowLeft } from "lucide-react";
+import LogoImage from "@/assets/Logo_2.png";
 
 export default function TakeSurvey() {
   const location = useLocation();
@@ -800,10 +801,20 @@ export default function TakeSurvey() {
     };
   }, []);
 
-  if (surveyLoading || questionsLoading || !currentQuestion) { 
+  // 로고 컴포넌트 (카드 위에 배치)
+  const Logo = () => (
+    <Link to="/" className="mb-4 block">
+      <img src={LogoImage} alt="픽서치" className="h-10 object-contain hover:opacity-80 transition-opacity mx-auto" />
+    </Link>
+  );
+
+  if (surveyLoading || questionsLoading || !currentQuestion) {
     return (
-      <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center">
+          <Logo />
+          <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
       </div>
     );
   }
@@ -811,11 +822,14 @@ export default function TakeSurvey() {
   if (errorMessage) {
     return (
       <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="p-6 text-center max-w-sm w-full rounded-2xl">
-          <div className="text-4xl mb-3">🚫</div>
-          <p className="text-lg font-bold text-gray-800 mb-2">{errorMessage}</p>
-          <p className="text-sm text-gray-500">다른 설문조사를 찾아보세요</p>
-        </Card>
+        <div className="flex flex-col items-center max-w-sm w-full">
+          <Logo />
+          <Card className="p-6 text-center w-full rounded-2xl">
+            <div className="text-4xl mb-3">🚫</div>
+            <p className="text-lg font-bold text-gray-800 mb-2">{errorMessage}</p>
+            <p className="text-sm text-gray-500">다른 설문조사를 찾아보세요</p>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -823,11 +837,14 @@ export default function TakeSurvey() {
   if ((!secretKey && !isPreviewMode) || surveyError || !survey) {
     return (
       <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="p-6 text-center max-w-sm w-full rounded-2xl">
-          <div className="text-4xl mb-3">❌</div>
-          <p className="text-lg font-bold text-gray-800 mb-2">설문을 찾을 수 없습니다</p>
-          <p className="text-sm text-gray-500">링크를 다시 확인해주세요</p>
-        </Card>
+        <div className="flex flex-col items-center max-w-sm w-full">
+          <Logo />
+          <Card className="p-6 text-center w-full rounded-2xl">
+            <div className="text-4xl mb-3">❌</div>
+            <p className="text-lg font-bold text-gray-800 mb-2">설문을 찾을 수 없습니다</p>
+            <p className="text-sm text-gray-500">링크를 다시 확인해주세요</p>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -842,18 +859,21 @@ export default function TakeSurvey() {
   if ((survey.status !== 'live' && survey.status !== 'preview') || isFreeSurveyFull) {
     return (
       <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="p-6 text-center max-w-sm w-full rounded-2xl">
-          <div className="text-4xl mb-3">⏸️</div>
-          <p className="text-lg font-bold text-gray-800 mb-2">
-            {isFreeSurveyFull && '참여 인원 마감'}
-            {survey.status === 'pending' && '승인 대기중'}
-            {survey.status === 'draft' && '준비중'}
-            {survey.status === 'closed' && '종료된 설문'}
-          </p>
-          <p className="text-sm text-gray-500">
-            {isFreeSurveyFull ? `최대 참여 인원(${freeSurveyLimit}명)에 도달했습니다` : '현재 참여할 수 없습니다'}
-          </p>
-        </Card>
+        <div className="flex flex-col items-center max-w-sm w-full">
+          <Logo />
+          <Card className="p-6 text-center w-full rounded-2xl">
+            <div className="text-4xl mb-3">⏸️</div>
+            <p className="text-lg font-bold text-gray-800 mb-2">
+              {isFreeSurveyFull && '참여 인원 마감'}
+              {survey.status === 'pending' && '승인 대기중'}
+              {survey.status === 'draft' && '준비중'}
+              {survey.status === 'closed' && '종료된 설문'}
+            </p>
+            <p className="text-sm text-gray-500">
+              {isFreeSurveyFull ? `최대 참여 인원(${freeSurveyLimit}명)에 도달했습니다` : '현재 참여할 수 없습니다'}
+            </p>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -861,38 +881,41 @@ export default function TakeSurvey() {
   if (isReadyToSubmit && !isCompleted) {
     return (
       <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="p-8 text-center bg-white rounded-3xl shadow-xl max-w-sm w-full border-0">
-          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-orange-500" />
-          </div>
-          
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-3">설문 완료 전 마지막 단계!</h2>
-          
-          <div className="bg-gray-50 p-4 rounded-2xl mb-6 text-left">
-            <p className="text-sm font-bold text-gray-800 mb-1">📢 안내사항</p>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              아래 버튼을 눌러 <span className="text-orange-600 font-bold">시크릿 코드를 복사</span>해야 설문이 최종 저장되고 완료됩니다.
-              <br/><br/>
-              복사된 코드를 리워드 앱에 붙여넣으세요.
-            </p>
-          </div>
-
-          {survey?.completion_secret_code && (
-            <div className="mb-6 opacity-50 blur-[2px] select-none pointer-events-none" aria-hidden="true">
-              <div className="bg-gray-100 rounded-xl p-3 text-xs text-gray-400 font-mono text-center">
-                {survey.completion_secret_code.substring(0, 10)}...
-              </div>
+        <div className="flex flex-col items-center max-w-sm w-full">
+          <Logo />
+          <Card className="p-8 text-center bg-white rounded-3xl shadow-xl w-full border-0">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-8 h-8 text-orange-500" />
             </div>
-          )}
 
-          <Button
-            onClick={handleFinalCopyAndSubmit}
-            disabled={isCompletingRef.current}
-            className="w-full bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white shadow-lg shadow-orange-200 rounded-xl h-14 text-base font-bold animate-pulse"
-          >
-            {isCompletingRef.current ? '저장 중...' : '코드 복사하고 설문 완료하기'}
-          </Button>
-        </Card>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-3">설문 완료 전 마지막 단계!</h2>
+
+            <div className="bg-gray-50 p-4 rounded-2xl mb-6 text-left">
+              <p className="text-sm font-bold text-gray-800 mb-1">📢 안내사항</p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                아래 버튼을 눌러 <span className="text-orange-600 font-bold">시크릿 코드를 복사</span>해야 설문이 최종 저장되고 완료됩니다.
+                <br/><br/>
+                복사된 코드를 리워드 앱에 붙여넣으세요.
+              </p>
+            </div>
+
+            {survey?.completion_secret_code && (
+              <div className="mb-6 opacity-50 blur-[2px] select-none pointer-events-none" aria-hidden="true">
+                <div className="bg-gray-100 rounded-xl p-3 text-xs text-gray-400 font-mono text-center">
+                  {survey.completion_secret_code.substring(0, 10)}...
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={handleFinalCopyAndSubmit}
+              disabled={isCompletingRef.current}
+              className="w-full bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white shadow-lg shadow-orange-200 rounded-xl h-14 text-base font-bold animate-pulse"
+            >
+              {isCompletingRef.current ? '저장 중...' : '코드 복사하고 설문 완료하기'}
+            </Button>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -900,38 +923,42 @@ export default function TakeSurvey() {
   if (isCompleted) {
     return (
       <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="p-6 text-center bg-white rounded-3xl shadow-lg max-w-sm w-full">
-          <div className="text-5xl mb-3">🎉</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">참여 완료!</h2>
-          <p className="text-gray-600 mb-5">코드가 클립보드에 복사되었습니다</p>
-          
-          <div className="bg-green-50 rounded-2xl p-4 mb-4 border border-green-100">
-            <p className="text-xs text-green-600 font-bold mb-2">발급된 시크릿 코드</p>
-            <div className="bg-white rounded-xl p-3 font-mono text-sm break-all text-gray-800 border border-gray-200 shadow-sm">
-              {secretCode}
+        <div className="flex flex-col items-center max-w-sm w-full">
+          <Logo />
+          <Card className="p-6 text-center bg-white rounded-3xl shadow-lg w-full">
+            <div className="text-5xl mb-3">🎉</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">참여 완료!</h2>
+            <p className="text-gray-600 mb-2">코드가 클립보드에 복사되었습니다</p>
+            <p className="text-xs text-gray-400 mb-5">이 설문은 '픽서치'를 통해 제작되었습니다.</p>
+
+            <div className="bg-green-50 rounded-2xl p-4 mb-4 border border-green-100">
+              <p className="text-xs text-green-600 font-bold mb-2">발급된 시크릿 코드</p>
+              <div className="bg-white rounded-xl p-3 font-mono text-sm break-all text-gray-800 border border-gray-200 shadow-sm">
+                {secretCode}
+              </div>
             </div>
-          </div>
 
-          <p className="text-xs text-gray-400 mb-4">
-            혹시 복사가 안되었다면 위 코드를 직접 복사해주세요
-          </p>
+            <p className="text-xs text-gray-400 mb-4">
+              혹시 복사가 안되었다면 위 코드를 직접 복사해주세요
+            </p>
 
-          <Button
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(secretCode);
-                alert('다시 복사되었습니다!');
-              } catch (e) {
-                console.error("Failed to copy text: ", e);
-                alert('클립보드 복사에 실패했습니다. 코드를 길게 눌러 복사해주세요.');
-              }
-            }}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl h-11"
-          >
-            <Copy className="w-4 h-4 mr-2" />
-            코드 다시 복사하기
-          </Button>
-        </Card>
+            <Button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(secretCode);
+                  alert('다시 복사되었습니다!');
+                } catch (e) {
+                  console.error("Failed to copy text: ", e);
+                  alert('클립보드 복사에 실패했습니다. 코드를 길게 눌러 복사해주세요.');
+                }
+              }}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl h-11"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              코드 다시 복사하기
+            </Button>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -943,10 +970,13 @@ export default function TakeSurvey() {
   if (!currentQuestionList || currentQuestionList.length === 0) {
     return (
       <div className="h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="p-6 text-center max-w-sm w-full rounded-2xl">
-          <div className="text-4xl mb-3">📝</div>
-          <p className="text-lg font-bold text-gray-800 mb-2">질문이 없습니다</p>
-        </Card>
+        <div className="flex flex-col items-center max-w-sm w-full">
+          <Logo />
+          <Card className="p-6 text-center w-full rounded-2xl">
+            <div className="text-4xl mb-3">📝</div>
+            <p className="text-lg font-bold text-gray-800 mb-2">질문이 없습니다</p>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -965,7 +995,9 @@ export default function TakeSurvey() {
               🚧 설문조사 미리보기 모드입니다
             </div>
           )}
-          <Card className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="flex flex-col items-center w-full max-w-md">
+            <Logo />
+            <Card className="w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
             <div className="h-2 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
             
             <div className="p-6">
@@ -1039,7 +1071,7 @@ export default function TakeSurvey() {
                 </div>
               </div>
               
-              <Button 
+              <Button
                 onClick={() => setShowPrivacyConsent(false)}
                 disabled={!privacyAgreed || !thirdPartyAgreed}
                 className="w-full h-14 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold rounded-xl shadow-lg text-base transition-all"
@@ -1048,6 +1080,7 @@ export default function TakeSurvey() {
               </Button>
             </div>
           </Card>
+          </div>
         </div>
       );
     }
@@ -1060,7 +1093,9 @@ export default function TakeSurvey() {
             {isPreviewMode ? '📋 예시 설문 체험 모드입니다' : '🚧 설문조사 미리보기 모드입니다'}
           </div>
         )}
-        <Card className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+        <div className="flex flex-col items-center w-full max-w-md">
+          <Logo />
+          <Card className="w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className={`h-2 ${isFreeSurvey ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-orange-500 to-pink-500'}`}></div>
           <Card className="p-8 border-0 shadow-none">
             <div className="mb-8">
@@ -1085,7 +1120,7 @@ export default function TakeSurvey() {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => {
                   setHasStarted(true);
                   if (survey?.status !== 'preview' && !isPreviewMode && !hasInitialized.current) {
@@ -1100,6 +1135,7 @@ export default function TakeSurvey() {
             </div>
           </Card>
         </Card>
+        </div>
       </div>
     );
   }
@@ -1111,9 +1147,10 @@ export default function TakeSurvey() {
           {isPreviewMode ? '📋 예시 설문 체험 모드입니다' : '🚧 설문조사 미리보기 모드입니다'}
         </div>
       )}
-      <div className="max-w-md w-full">
-        <div key={currentQuestion?.id || 'loading'}>
-            <Card className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+      <div className="flex flex-col items-center max-w-md w-full">
+        <Logo />
+        <div className="w-full" key={currentQuestion?.id || 'loading'}>
+          <Card className="bg-white rounded-3xl shadow-2xl overflow-hidden">
               <div className="px-5 pt-4 pb-3 border-b border-gray-100">
                 <div className="text-center">
                   <span className="text-sm font-bold text-orange-600">
@@ -1656,9 +1693,9 @@ export default function TakeSurvey() {
                 {/* Previous Button */}
                 {(currentQuestionIndex > 0 || branchPath.length > 0) && (
                   <div className="mt-6 flex justify-center">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={handlePrevious}
                       disabled={isProcessing}
                       className="text-gray-400 hover:text-gray-600 hover:bg-gray-100"
@@ -1668,11 +1705,11 @@ export default function TakeSurvey() {
                     </Button>
                   </div>
                 )}
-                </div>
               </div>
-                </Card>
+            </div>
+          </Card>
         </div>
-                </div>
+      </div>
     </div>
   );
 }

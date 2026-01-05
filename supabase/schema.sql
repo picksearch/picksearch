@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name TEXT,
   custom_name TEXT,
   role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  referred_by TEXT,
   refund_bank_name TEXT,
   refund_account_number TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -63,21 +62,25 @@ CREATE TABLE IF NOT EXISTS surveys (
   description TEXT,
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'review', 'live', 'scheduled', 'closed', 'rejected')),
   payment_status TEXT DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'paid')),
-  survey_type TEXT DEFAULT 'paid' CHECK (survey_type IN ('free', 'paid')),
+  survey_type TEXT DEFAULT 'paid' CHECK (survey_type IN ('free', 'paid', 'preview')),
   secret_key TEXT UNIQUE,
   completion_secret_code TEXT,
   target_participants INTEGER,
   completed_responses INTEGER DEFAULT 0,
   in_progress_count INTEGER DEFAULT 0,
   creator_name TEXT,
-  target_persona TEXT,
   target_options JSONB,
   landing_enabled BOOLEAN DEFAULT false,
-  landing_title TEXT,
-  landing_description TEXT,
-  landing_image_url TEXT,
+  landing_page_url TEXT,
   scheduled_start TIMESTAMPTZ,
   scheduled_end TIMESTAMPTZ,
+  deposit_confirmed BOOLEAN DEFAULT false,
+  survey_purpose TEXT,
+  slot_count INTEGER DEFAULT 1,
+  total_cost INTEGER DEFAULT 0,
+  usage_purpose TEXT,
+  rejection_reason TEXT,
+  rejected_at TIMESTAMPTZ,
   category TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -103,6 +106,8 @@ CREATE TABLE IF NOT EXISTS questions (
   branch_end_type TEXT CHECK (branch_end_type IN ('continue', 'end_survey', NULL)),
   branch_targets JSONB,
   max_selections INTEGER,
+  cost INTEGER DEFAULT 0,
+  image_descriptions TEXT[],
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -122,42 +127,30 @@ CREATE TABLE IF NOT EXISTS responses (
 );
 
 -- =====================================================
--- 5. CREDIT TRANSACTIONS TABLE
+-- 5. PAYMENTS TABLE
 -- =====================================================
-CREATE TABLE IF NOT EXISTS credit_transactions (
+CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   survey_id UUID REFERENCES surveys(id) ON DELETE SET NULL,
   amount INTEGER NOT NULL,
-  transaction_type TEXT NOT NULL CHECK (transaction_type IN ('purchase', 'refund', 'usage')),
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed')),
+  type TEXT NOT NULL CHECK (type IN ('deposit', 'refund')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
   depositor_name TEXT,
   proof_type TEXT,
-  proof_image_url TEXT,
   company_name TEXT,
-  company_registration_number TEXT,
-  admin_notes TEXT,
+  user_email TEXT,
+  proof_identifier TEXT,
+  ceo_name TEXT,
+  tax_email TEXT,
+  business_type TEXT,
+  business_item TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- =====================================================
--- 6. COIN TRANSACTIONS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS coin_transactions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  amount INTEGER NOT NULL,
-  transaction_type TEXT NOT NULL CHECK (transaction_type IN (
-    'referral_bonus', 'referred_bonus', 'monthly_bonus', 'admin_grant', 'usage'
-  )),
-  description TEXT,
-  related_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- =====================================================
--- 7. SYSTEM CONFIGS TABLE
+-- 6. SYSTEM CONFIGS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS system_configs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -169,7 +162,7 @@ CREATE TABLE IF NOT EXISTS system_configs (
 );
 
 -- =====================================================
--- 9. SUPPORT TICKETS TABLE
+-- 7. SUPPORT TICKETS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS support_tickets (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -184,7 +177,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
 );
 
 -- =====================================================
--- 10. FAQS TABLE
+-- 8. FAQS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS faqs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -198,7 +191,7 @@ CREATE TABLE IF NOT EXISTS faqs (
 );
 
 -- =====================================================
--- 11. SEO SETTINGS TABLE
+-- 9. SEO SETTINGS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS seo_settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -212,7 +205,7 @@ CREATE TABLE IF NOT EXISTS seo_settings (
 );
 
 -- =====================================================
--- 12. CUSTOMER MEMOS TABLE
+-- 10. CUSTOMER MEMOS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS customer_memos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -223,7 +216,7 @@ CREATE TABLE IF NOT EXISTS customer_memos (
 );
 
 -- =====================================================
--- 13. SURVEY CATEGORIES TABLE
+-- 11. SURVEY CATEGORIES TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS survey_categories (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -231,6 +224,33 @@ CREATE TABLE IF NOT EXISTS survey_categories (
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, name)
+);
+
+-- =====================================================
+-- 12. PARTNERS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS partners (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  api_key TEXT UNIQUE NOT NULL,
+  secret_key_hash TEXT NOT NULL,
+  webhook_url TEXT,
+  webhook_secret TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- 13. USER LINKS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS user_links (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  partner_id UUID REFERENCES partners(id) ON DELETE CASCADE,
+  external_user_id TEXT NOT NULL,
+  picksearch_user_id UUID,
+  user_token TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(partner_id, external_user_id)
 );
 
 -- =====================================================
@@ -244,11 +264,13 @@ CREATE INDEX IF NOT EXISTS idx_questions_parent_id ON questions(parent_question_
 CREATE INDEX IF NOT EXISTS idx_responses_survey_id ON responses(survey_id);
 CREATE INDEX IF NOT EXISTS idx_responses_status ON responses(status);
 CREATE INDEX IF NOT EXISTS idx_responses_ip ON responses(ip_address);
-CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_coin_transactions_user_id ON coin_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
 CREATE INDEX IF NOT EXISTS idx_customer_memos_user_id ON customer_memos(user_id);
 CREATE INDEX IF NOT EXISTS idx_survey_categories_user_id ON survey_categories(user_id);
+CREATE INDEX IF NOT EXISTS idx_partners_api_key ON partners(api_key);
+CREATE INDEX IF NOT EXISTS idx_user_links_token ON user_links(user_token);
+CREATE INDEX IF NOT EXISTS idx_user_links_external ON user_links(partner_id, external_user_id);
 
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -259,14 +281,15 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE surveys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE responses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE credit_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE coin_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seo_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_memos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE survey_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE partners ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_links ENABLE ROW LEVEL SECURITY;
 
 -- PROFILES policies
 CREATE POLICY "Users can view own profile" ON profiles
@@ -339,23 +362,14 @@ CREATE POLICY "Admins can view all responses" ON responses
     is_admin()
   );
 
--- CREDIT_TRANSACTIONS policies
-CREATE POLICY "Users can view own transactions" ON credit_transactions
+-- PAYMENTS policies
+CREATE POLICY "Users can view own payments" ON payments
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can create transactions" ON credit_transactions
+CREATE POLICY "Users can create payments" ON payments
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Admins can manage all transactions" ON credit_transactions
-  FOR ALL USING (
-    is_admin()
-  );
-
--- COIN_TRANSACTIONS policies
-CREATE POLICY "Users can view own coin transactions" ON coin_transactions
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Admins can manage all coin transactions" ON coin_transactions
+CREATE POLICY "Admins can manage all payments" ON payments
   FOR ALL USING (
     is_admin()
   );
@@ -425,6 +439,18 @@ CREATE POLICY "Admins can manage all categories" ON survey_categories
     is_admin()
   );
 
+-- PARTNERS policies
+CREATE POLICY "Admins can manage partners" ON partners
+  FOR ALL USING (
+    is_admin()
+  );
+
+-- USER_LINKS policies
+CREATE POLICY "Admins can manage user links" ON user_links
+  FOR ALL USING (
+    is_admin()
+  );
+
 -- =====================================================
 -- FUNCTIONS
 -- =====================================================
@@ -445,7 +471,7 @@ CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
 CREATE TRIGGER update_surveys_updated_at BEFORE UPDATE ON surveys
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER update_credit_transactions_updated_at BEFORE UPDATE ON credit_transactions
+CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_system_configs_updated_at BEFORE UPDATE ON system_configs

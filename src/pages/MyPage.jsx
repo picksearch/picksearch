@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "@/api/auth";
+import { SystemConfig } from "@/api/entities";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,28 @@ export default function MyPage() {
     queryKey: ['currentUser'],
     queryFn: async () => {
       return await auth.me();
+    }
+  });
+
+  // 무통장 입금 계좌 정보 가져오기
+  const { data: bankAccount } = useQuery({
+    queryKey: ['bankAccount'],
+    queryFn: async () => {
+      const configs = await SystemConfig.filter({ key: 'bank_account' });
+      if (configs.length > 0 && configs[0].value) {
+        const val = configs[0].value;
+        // 객체 형식인 경우 (새 형식)
+        if (typeof val === 'object' && val.bankName) {
+          return {
+            bankName: val.bankName,
+            accountNumber: val.accountNumber,
+            accountHolder: val.accountHolder
+          };
+        }
+        // 문자열인 경우 (이전 형식)
+        return { display: val };
+      }
+      return { bankName: '신한은행', accountNumber: '100-037-544100', accountHolder: '주식회사픽켓팅' }; // 기본값
     }
   });
 
@@ -74,7 +97,15 @@ export default function MyPage() {
 
   const handleCopyAccount = async () => {
     try {
-      await navigator.clipboard.writeText("100037544100");
+      let textToCopy = "신한은행 100-037-544100 (주식회사픽켓팅)";
+      if (bankAccount) {
+        if (bankAccount.display) {
+          textToCopy = bankAccount.display;
+        } else if (bankAccount.bankName) {
+          textToCopy = `${bankAccount.bankName} ${bankAccount.accountNumber} (${bankAccount.accountHolder})`;
+        }
+      }
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -318,9 +349,15 @@ export default function MyPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-blue-600 text-base font-semibold leading-tight">
-                  신한은행<br />
-                  100-037-544100<br />
-                  (주식회사픽켓팅)
+                  {bankAccount?.display ? (
+                    <span className="whitespace-pre-line">{bankAccount.display}</span>
+                  ) : (
+                    <>
+                      {bankAccount?.bankName || '신한은행'}<br />
+                      {bankAccount?.accountNumber || '100-037-544100'}<br />
+                      ({bankAccount?.accountHolder || '주식회사픽켓팅'})
+                    </>
+                  )}
                 </h3>
               </div>
               <Button

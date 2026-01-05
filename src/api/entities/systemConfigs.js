@@ -109,6 +109,29 @@ export const SystemConfig = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  // Alias for getAll (for consistency with other entities)
+  list: async () => {
+    return SystemConfig.getAll();
+  },
+
+  // Create a new config
+  create: async ({ key, value, description = '' }) => {
+    const { data, error } = await supabase
+      .from('system_configs')
+      .insert({
+        key,
+        value,
+        description,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 };
 

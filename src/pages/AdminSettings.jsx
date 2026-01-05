@@ -37,10 +37,17 @@ export default function AdminSettings() {
   });
 
   // Stats Queries (for Dashboard)
-  const { data: pendingCredits = [] } = useQuery({
-    queryKey: ['pendingCredits'],
-    queryFn: () => Payment.filter({ status: 'pending' }, 'created_at', false),
+  const { data: allCredits = [] } = useQuery({
+    queryKey: ['allCredits'],
+    queryFn: async () => {
+      const pending = await Payment.filter({ status: 'pending' }, 'created_at', false);
+      const confirmed = await Payment.filter({ status: 'confirmed' }, 'created_at', false);
+      return [...pending, ...confirmed].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    },
   });
+
+  // 대기중인 입금만 필터 (대시보드용)
+  const pendingCredits = allCredits.filter(c => c.status === 'pending');
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['allUsers'],
@@ -67,19 +74,24 @@ export default function AdminSettings() {
   // Mutations
   const updateConfigMutation = useMutation({
     mutationFn: async ({ id, value }) => {
+      console.log('Saving bank account:', { id, value });
       if (id) {
         await SystemConfig.update(id, { value });
       } else {
-        await SystemConfig.create({ 
-          key: 'bank_account', 
-          value, 
-          description: '무통장 입금 계좌 정보' 
+        await SystemConfig.create({
+          key: 'bank_account',
+          value,
+          description: '무통장 입금 계좌 정보'
         });
       }
     },
     onSuccess: () => {
       refetchConfig();
       alert('설정이 저장되었습니다.');
+    },
+    onError: (error) => {
+      console.error('Save failed:', error);
+      alert('저장 실패: ' + error.message);
     },
   });
 
@@ -90,27 +102,30 @@ export default function AdminSettings() {
       if (!currentTxs || currentTxs.length === 0) {
         throw new Error("트랜잭션을 찾을 수 없습니다.");
       }
-      
+
       const currentTx = currentTxs[0];
       if (currentTx.status !== 'pending') {
         throw new Error("이미 처리된 요청입니다.");
       }
 
+      // Payment 상태를 confirmed로 변경
       await Payment.update(transaction.id, { status: 'confirmed' });
-      const users = await User.filter({ email: transaction.user_email });
-      if (users.length > 0) {
-        const currentUser = users[0];
-        await User.update(currentUser.id, {
-          credits: (currentUser.credits || 0) + transaction.amount
+
+      // 해당 설문의 status를 review로, payment_status를 paid로 변경
+      if (transaction.survey_id) {
+        await Survey.update(transaction.survey_id, {
+          status: 'review',
+          payment_status: 'paid'
         });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['pendingCredits']);
-      alert('크레딧 충전이 승인되었습니다.');
+      queryClient.invalidateQueries(['allCredits']);
+      queryClient.invalidateQueries(['pendingSurveysCount']);
+      alert('입금이 확인되었습니다.');
     },
     onError: (error) => {
-      queryClient.invalidateQueries(['pendingCredits']);
+      queryClient.invalidateQueries(['allCredits']);
       alert(error.message || '처리 중 오류가 발생했습니다.');
     }
   });
@@ -120,8 +135,8 @@ export default function AdminSettings() {
       await Payment.update(transactionId, { status: 'rejected' });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['pendingCredits']);
-      alert('크레딧 충전이 거절되었습니다.');
+      queryClient.invalidateQueries(['allCredits']);
+      alert('입금이 거절되었습니다.');
     },
   });
 
@@ -208,7 +223,7 @@ export default function AdminSettings() {
         <div className="flex-1 py-4 px-3 space-y-2 overflow-y-auto">
           <MenuItem id="dashboard" icon={LayoutDashboard} label="대시보드" />
           <MenuItem id="orders" icon={FileSpreadsheet} label="주문/설문 관리" />
-          <MenuItem id="credit" icon={Coins} label="크레딧 관리" />
+          <MenuItem id="credit" icon={Coins} label="입금 관리" />
           <MenuItem id="users" icon={Users} label="회원/고객 데이터" />
           <MenuItem id="support" icon={MessageSquare} label="고객센터" />
           <MenuItem id="seo" icon={Settings} label="SEO 설정" />
@@ -237,7 +252,7 @@ export default function AdminSettings() {
           <h2 className="text-lg font-bold text-gray-800">
             {activeTab === 'dashboard' && '대시보드'}
             {activeTab === 'orders' && '주문 및 설문 관리'}
-            {activeTab === 'credit' && '크레딧 충전 관리'}
+            {activeTab === 'credit' && '입금 관리'}
             {activeTab === 'users' && '회원 관리'}
             {activeTab === 'support' && '고객센터 관리'}
             {activeTab === 'seo' && 'SEO(검색엔진 최적화) 설정'}
@@ -266,7 +281,7 @@ export default function AdminSettings() {
                         <Clock className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500 font-medium">충전 대기</p>
+                        <p className="text-sm text-gray-500 font-medium">입금 대기</p>
                         <h3 className="text-2xl font-bold text-gray-900">{pendingCredits.length}건</h3>
                       </div>
                     </CardContent>
@@ -327,7 +342,7 @@ export default function AdminSettings() {
 
                   <Card className="border-0 shadow-sm">
                     <CardHeader>
-                      <CardTitle>최근 충전 요청</CardTitle>
+                      <CardTitle>최근 입금 요청</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
@@ -359,43 +374,55 @@ export default function AdminSettings() {
 
             {activeTab === 'credit' && (
                <div className="space-y-6">
-                 {pendingCredits.length === 0 ? (
+                 {allCredits.length === 0 ? (
                    <div className="text-center py-20 bg-white rounded-2xl shadow-sm">
                      <Coins className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                     <p className="text-lg text-gray-500">처리할 충전 요청이 없습니다.</p>
+                     <p className="text-lg text-gray-500">입금 요청 내역이 없습니다.</p>
                    </div>
                  ) : (
-                   pendingCredits.map(transaction => (
-                     <Card key={transaction.id} className="border-0 shadow-sm hover:shadow-md transition-all">
-                       <CardContent className="p-6 flex items-center justify-between">
-                         <div className="flex-1">
-                           <div className="flex items-center gap-2 mb-2">
-                             <Badge className="bg-yellow-100 text-yellow-700 border-0">대기중</Badge>
-                             <span className="text-sm text-gray-500">{formatKST(transaction.created_at)}</span>
+                   allCredits.map(transaction => {
+                     const isConfirmed = transaction.status === 'confirmed';
+                     return (
+                       <Card key={transaction.id} className={`border-0 shadow-sm hover:shadow-md transition-all ${isConfirmed ? 'opacity-70' : ''}`}>
+                         <CardContent className="p-6 flex items-center justify-between">
+                           <div className="flex-1">
+                             <div className="flex items-center gap-2 mb-2">
+                               <Badge className={isConfirmed ? "bg-green-100 text-green-700 border-0" : "bg-yellow-100 text-yellow-700 border-0"}>
+                                 {isConfirmed ? '입금완료' : '대기중'}
+                               </Badge>
+                               <span className="text-sm text-gray-500">{formatKST(transaction.created_at)}</span>
+                             </div>
+                             <h3 className="text-xl font-bold text-gray-900 mb-1">
+                               {transaction.amount.toLocaleString()}원 입금 요청
+                             </h3>
+                             <p className="text-gray-600">{transaction.user_email} {transaction.depositor_name ? `(${transaction.depositor_name})` : ''}</p>
                            </div>
-                           <h3 className="text-xl font-bold text-gray-900 mb-1">
-                             {transaction.amount.toLocaleString()}원 충전 요청
-                           </h3>
-                           <p className="text-gray-600">{transaction.user_email} {transaction.depositor_name ? `(${transaction.depositor_name})` : ''}</p>
-                         </div>
-                         <div className="flex gap-2 ml-6">
-                           <Button 
-                             onClick={() => approveCreditMutation.mutate(transaction)}
-                             className="bg-green-500 hover:bg-green-600 text-white"
-                           >
-                             <CheckCircle className="w-4 h-4 mr-2" /> 승인
-                           </Button>
-                           <Button 
-                             onClick={() => rejectCreditMutation.mutate(transaction.id)}
-                             variant="outline"
-                             className="border-red-200 text-red-600 hover:bg-red-50"
-                           >
-                             <XCircle className="w-4 h-4 mr-2" /> 거절
-                           </Button>
-                         </div>
-                       </CardContent>
-                     </Card>
-                   ))
+                           <div className="flex gap-2 ml-6">
+                             <Button
+                               onClick={() => approveCreditMutation.mutate(transaction)}
+                               disabled={isConfirmed || approveCreditMutation.isPending}
+                               className={isConfirmed
+                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                 : "bg-green-500 hover:bg-green-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"}
+                             >
+                               <CheckCircle className="w-4 h-4 mr-2" />
+                               {isConfirmed ? '입금 완료' : (approveCreditMutation.isPending ? '처리중...' : '입금 확인')}
+                             </Button>
+                             {!isConfirmed && (
+                               <Button
+                                 onClick={() => rejectCreditMutation.mutate(transaction.id)}
+                                 disabled={rejectCreditMutation.isPending}
+                                 variant="outline"
+                                 className="border-red-200 text-red-600 hover:bg-red-50"
+                               >
+                                 <XCircle className="w-4 h-4 mr-2" /> 거절
+                               </Button>
+                             )}
+                           </div>
+                         </CardContent>
+                       </Card>
+                     );
+                   })
                  )}
                </div>
             )}
@@ -493,29 +520,62 @@ export default function AdminSettings() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-4">
                       무통장 입금 계좌 정보
                     </label>
-                    <div className="flex gap-3">
-                      <Input 
-                        defaultValue={systemConfig?.find(c => c.key === 'bank_account')?.value || ''}
-                        id="bank-account-input"
-                        placeholder="은행명 계좌번호 예금주"
-                        className="flex-1"
-                      />
-                      <Button 
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">은행명</label>
+                        <Input
+                          defaultValue={(() => {
+                            const value = systemConfig?.find(c => c.key === 'bank_account')?.value;
+                            if (value && typeof value === 'object') return value.bankName || '';
+                            return '';
+                          })()}
+                          id="bank-name-input"
+                          placeholder="신한은행"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">계좌번호</label>
+                        <Input
+                          defaultValue={(() => {
+                            const value = systemConfig?.find(c => c.key === 'bank_account')?.value;
+                            if (value && typeof value === 'object') return value.accountNumber || '';
+                            return '';
+                          })()}
+                          id="bank-account-input"
+                          placeholder="123-456-789000"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">예금주</label>
+                        <Input
+                          defaultValue={(() => {
+                            const value = systemConfig?.find(c => c.key === 'bank_account')?.value;
+                            if (value && typeof value === 'object') return value.accountHolder || '';
+                            return '';
+                          })()}
+                          id="bank-holder-input"
+                          placeholder="홍길동"
+                        />
+                      </div>
+                      <Button
+                        className="w-full mt-2"
                         onClick={() => {
-                          const input = document.getElementById('bank-account-input');
-                          updateConfigMutation.mutate({ 
-                            id: systemConfig?.find(c => c.key === 'bank_account')?.id, 
-                            value: input.value 
+                          const bankName = document.getElementById('bank-name-input').value;
+                          const accountNumber = document.getElementById('bank-account-input').value;
+                          const accountHolder = document.getElementById('bank-holder-input').value;
+                          updateConfigMutation.mutate({
+                            id: systemConfig?.find(c => c.key === 'bank_account')?.id,
+                            value: { bankName, accountNumber, accountHolder }
                           });
                         }}
                       >
                         저장
                       </Button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 mt-3">
                       사용자가 크레딧 충전 페이지에서 보게 될 계좌 정보입니다.
                     </p>
                   </div>
