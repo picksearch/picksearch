@@ -32,14 +32,8 @@ export default async function handler(request) {
       );
     }
 
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-
-    // 디버깅: 환경변수 상태 확인
-    console.log('Environment check:', {
-      hasKey: !!openaiApiKey,
-      keyLength: openaiApiKey?.length || 0,
-      keyPrefix: openaiApiKey?.substring(0, 7) || 'none'
-    });
+    // 두 가지 환경변수명 모두 지원
+    const openaiApiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
 
     if (!openaiApiKey) {
       return new Response(
