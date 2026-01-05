@@ -172,10 +172,13 @@ export default function SurveyResults() {
         add_context_from_internet: false
       });
 
-      setHyperReportData(result);
+      // API 응답에서 실제 콘텐츠 추출
+      const reportContent = result?.response || result;
+
+      setHyperReportData(reportContent);
 
       // survey_reports 테이블에 저장
-      await SurveyReport.updateHyperPrecisionReport(selectedSurvey.id, result);
+      await SurveyReport.updateHyperPrecisionReport(selectedSurvey.id, reportContent);
     } catch (error) {
       console.error('초정밀 리포트 생성 실패:', error);
       alert('리포트 생성에 실패했습니다: ' + error.message);
