@@ -22,7 +22,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { MessageCircle, HelpCircle, Plus, Loader2, ChevronRight, User, Calendar, LifeBuoy } from "lucide-react";
+import { MessageCircle, HelpCircle, Plus, Loader2, ChevronRight, User, Calendar, LifeBuoy, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { formatKST } from "@/utils";
@@ -146,6 +146,22 @@ export default function Support() {
     },
     onError: (err) => alert(err.message)
   });
+
+  const deleteTicketMutation = useMutation({
+    mutationFn: (id) => SupportTicket.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['myTickets']);
+      queryClient.invalidateQueries(['adminTickets']);
+      alert("문의가 삭제되었습니다.");
+    },
+    onError: (err) => alert("삭제 실패: " + err.message)
+  });
+
+  const handleDeleteTicket = (ticketId) => {
+    if (window.confirm('문의를 삭제하시겠습니까?')) {
+      deleteTicketMutation.mutate(ticketId);
+    }
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -376,6 +392,21 @@ export default function Support() {
                             담당자가 내용을 확인하고 있습니다. 잠시만 기다려주세요.
                           </p>
                         )}
+
+                        {/* 삭제 버튼 - 본인 문의 또는 관리자인 경우 */}
+                        {(ticket.user_email === user?.email || user?.role === 'admin') && (
+                          <div className="flex justify-end pt-4 border-t border-gray-100 mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteTicket(ticket.id)}
+                              className="text-red-500 border-red-200 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              삭제
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -388,7 +419,7 @@ export default function Support() {
         <TabsContent value="faq" className="space-y-4">
           <div className="space-y-3">
             <Accordion type="single" collapsible className="w-full space-y-3">
-              {[...defaultFaqs, ...faqs].map((faq) => (
+              {(faqs.length > 0 ? faqs : defaultFaqs).map((faq) => (
                 <AccordionItem key={faq.id} value={faq.id} className="bg-white border border-gray-100 rounded-[1.2rem] px-6 shadow-sm overflow-hidden transition-all data-[state=open]:ring-2 data-[state=open]:ring-blue-100 data-[state=open]:shadow-md">
                   <AccordionTrigger className="hover:no-underline py-5 text-left font-bold text-gray-800 text-base">
                     <span className="flex items-start gap-3">

@@ -46,13 +46,13 @@ export default function AdminSupportManager() {
   const replyTicketMutation = useMutation({
     mutationFn: async ({ id, reply, status }) => {
       await SupportTicket.update(id, {
-        admin_reply: reply,
-        status: status,
-        answered_at: new Date().toISOString()
+        admin_response: reply,
+        status: status
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['adminTickets']);
+      queryClient.invalidateQueries(['myTickets']); // 사용자 문의 목록도 갱신
       setSelectedTicket(null);
       setReplyContent("");
       alert("답변이 등록되었습니다.");
@@ -65,20 +65,37 @@ export default function AdminSupportManager() {
       if (editingFAQ) {
         await FAQ.update(editingFAQ.id, data);
       } else {
-        await FAQ.create(data);
+        await FAQ.create({ ...data, is_active: true });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['adminFAQs']);
+      queryClient.invalidateQueries(['faqs']); // Support 페이지의 FAQ도 갱신
       setIsFAQModalOpen(false);
       setEditingFAQ(null);
       setFaqFormData({ question: "", answer: "", order: 0 });
+      alert("FAQ가 저장되었습니다.");
     }
   });
 
   const deleteFAQMutation = useMutation({
     mutationFn: (id) => FAQ.delete(id),
-    onSuccess: () => queryClient.invalidateQueries(['adminFAQs'])
+    onSuccess: () => {
+      queryClient.invalidateQueries(['adminFAQs']);
+      queryClient.invalidateQueries(['faqs']); // Support 페이지의 FAQ도 갱신
+      alert("FAQ가 삭제되었습니다.");
+    }
+  });
+
+  // 문의 삭제 Mutation
+  const deleteTicketMutation = useMutation({
+    mutationFn: (id) => SupportTicket.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['adminTickets']);
+      queryClient.invalidateQueries(['myTickets']);
+      setSelectedTicket(null);
+      alert("문의가 삭제되었습니다.");
+    }
   });
 
   const openFAQModal = (faq = null) => {
@@ -109,32 +126,35 @@ export default function AdminSupportManager() {
             {/* Ticket List */}
             <div className="md:col-span-1 space-y-3 h-[600px] overflow-y-auto pr-2">
               {tickets.map(ticket => (
-                <div 
+                <div
                   key={ticket.id}
                   onClick={() => {
                     setSelectedTicket(ticket);
-                    setReplyContent(ticket.admin_reply || "");
+                    setReplyContent(ticket.admin_response || "");
                   }}
                   className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${
-                    selectedTicket?.id === ticket.id 
-                      ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200' 
+                    selectedTicket?.id === ticket.id
+                      ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
                       : 'bg-white border-gray-200'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <Badge className={
-                      ticket.status === 'answered' ? 'bg-green-100 text-green-700' :
+                      ticket.status === 'resolved' ? 'bg-green-100 text-green-700' :
                       ticket.status === 'closed' ? 'bg-gray-100 text-gray-700' :
+                      ticket.status === 'in_progress' ? 'bg-orange-100 text-orange-700' :
                       'bg-blue-100 text-blue-700'
                     }>
-                      {ticket.status === 'open' ? '대기중' : 
-                       ticket.status === 'answered' ? '답변완료' : ticket.status}
+                      {ticket.status === 'open' ? '대기중' :
+                       ticket.status === 'in_progress' ? '처리중' :
+                       ticket.status === 'resolved' ? '답변완료' :
+                       ticket.status === 'closed' ? '종료' : ticket.status}
                     </Badge>
                     <span className="text-xs text-gray-400">
                       {formatKST(ticket.created_at, 'MM.dd HH:mm')}
                     </span>
                   </div>
-                  <h4 className="font-bold text-gray-800 text-sm line-clamp-1 mb-1">{ticket.title}</h4>
+                  <h4 className="font-bold text-gray-800 text-sm line-clamp-1 mb-1">{ticket.subject}</h4>
                   <p className="text-xs text-gray-500">{ticket.user_email}</p>
                 </div>
               ))}
@@ -147,7 +167,7 @@ export default function AdminSupportManager() {
                   <CardHeader className="border-b border-gray-100">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg mb-2">{selectedTicket.title}</CardTitle>
+                        <CardTitle className="text-lg mb-2">{selectedTicket.subject}</CardTitle>
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <span>{selectedTicket.user_email}</span>
                           <span>•</span>
@@ -158,7 +178,7 @@ export default function AdminSupportManager() {
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
                     <div className="bg-gray-50 p-4 rounded-xl min-h-[100px]">
-                      <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedTicket.content}</p>
+                      <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedTicket.message}</p>
                     </div>
 
                     <div className="space-y-3">
@@ -172,30 +192,45 @@ export default function AdminSupportManager() {
                         placeholder="답변 내용을 입력하세요..."
                         className="min-h-[150px] rounded-xl resize-none text-base"
                       />
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-between">
                         <Button
                           variant="outline"
-                          onClick={() => replyTicketMutation.mutate({
-                             id: selectedTicket.id,
-                             reply: replyContent,
-                             status: 'closed'
-                          })}
-                          className="text-gray-600"
+                          onClick={() => {
+                            if (window.confirm('문의를 삭제하시겠습니까?')) {
+                              deleteTicketMutation.mutate(selectedTicket.id);
+                            }
+                          }}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
                         >
-                          종료 처리
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          삭제
                         </Button>
-                        <Button
-                          onClick={() => replyTicketMutation.mutate({
-                             id: selectedTicket.id,
-                             reply: replyContent,
-                             status: 'answered'
-                          })}
-                          disabled={!replyContent.trim() || replyTicketMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          답변 등록
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => replyTicketMutation.mutate({
+                               id: selectedTicket.id,
+                               reply: replyContent,
+                               status: 'closed'
+                            })}
+                            disabled={selectedTicket.status === 'closed' || !replyContent.trim() || replyTicketMutation.isPending}
+                            className={selectedTicket.status === 'closed' || !replyContent.trim() ? "text-gray-400 cursor-not-allowed" : "text-gray-600"}
+                          >
+                            {selectedTicket.status === 'closed' ? '종료됨' : '종료 처리'}
+                          </Button>
+                          <Button
+                            onClick={() => replyTicketMutation.mutate({
+                               id: selectedTicket.id,
+                               reply: replyContent,
+                               status: 'resolved'
+                            })}
+                            disabled={!replyContent.trim() || replyTicketMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            답변 등록
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

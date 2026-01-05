@@ -110,6 +110,17 @@ export const FAQ = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  // Alias for getAll with optional order field
+  list: async (orderBy = 'order') => {
+    const { data, error } = await supabase
+      .from('faqs')
+      .select('*')
+      .order(orderBy, { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   }
 };
 

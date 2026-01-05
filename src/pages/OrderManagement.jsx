@@ -230,7 +230,7 @@ export default function OrderManagement() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [imageGalleryOpen, allImages.length]);
 
-  const downloadExcelMutation = useMutation({
+  const downloadJsonMutation = useMutation({
     mutationFn: async (surveys) => {
       const surveysWithQuestions = await Promise.all(
         surveys.map(async (survey) => {
@@ -239,71 +239,74 @@ export default function OrderManagement() {
         })
       );
 
-      let csvContent = '\uFEFF';
-      // Updated Header with all required fields
-      csvContent += '티어,제목,설명,설문목적,질문만든사람,타겟/상세타겟,이벤트페이지,설문URL,시크릿코드,시작일,종료일,질문번호,질문유형,질문내용,선택지/이미지URL\n';
+      // Build JSON structure
+      const jsonData = {
+        exportDate: new Date().toISOString(),
+        totalSurveys: surveysWithQuestions.length,
+        surveys: surveysWithQuestions.map(survey => {
+          const surveyUrl = `${window.location.origin}/TakeSurvey?key=${survey.secret_key}`;
+          const landingUrl = survey.landing_enabled ? (survey.landing_page_url || '') : '';
+          const creatorName = survey.creator_name || survey.created_by || 'Unknown';
 
-      surveysWithQuestions.forEach(survey => {
-        const surveyUrl = `${window.location.origin}/TakeSurvey?key=${survey.secret_key}`;
-        const landingUrl = survey.landing_enabled ? (survey.landing_page_url || '') : '';
-        const creatorName = survey.creator_name || survey.created_by || 'Unknown';
-
-        // Format Target
-        let targetInfo = survey.target_persona || '';
-        if (survey.target_options) {
-          try {
-            const settings = typeof survey.target_options === 'string' ? JSON.parse(survey.target_options) : survey.target_options;
-            if (Array.isArray(settings)) {
-              targetInfo = settings.map(cell => {
-                return Object.entries(cell.targets || {}).map(([cat, fields]) => {
-                  return `${cat}: ${Object.entries(fields).map(([k, v]) => `${k}=${v}`).join(', ')}`;
-                }).join(' | ');
-              }).join(' || ');
-            } else {
-              targetInfo = JSON.stringify(settings);
+          // Format Target
+          let targetInfo = survey.target_persona || '';
+          if (survey.target_options) {
+            try {
+              const settings = typeof survey.target_options === 'string' ? JSON.parse(survey.target_options) : survey.target_options;
+              if (Array.isArray(settings)) {
+                targetInfo = settings.map(cell => {
+                  return Object.entries(cell.targets || {}).map(([cat, fields]) => {
+                    return `${cat}: ${Object.entries(fields).map(([k, v]) => `${k}=${v}`).join(', ')}`;
+                  }).join(' | ');
+                }).join(' || ');
+              } else {
+                targetInfo = JSON.stringify(settings);
+              }
+            } catch (e) {
+              targetInfo = '타겟 데이터 오류';
             }
-          } catch (e) {
-            targetInfo = '타겟 데이터 오류';
-          }
-        }
-
-        const startDate = survey.scheduled_start || '';
-        const endDate = survey.scheduled_end || '';
-
-        survey.questions.forEach((question, qIdx) => {
-          const questionType = question.question_type === 'multiple_choice' ? '객관식' :
-            question.question_type === 'short_answer' ? '주관식' :
-              question.question_type === 'numeric_rating' ? '수치평정' :
-                question.question_type === 'likert_scale' ? '리커트척도' :
-                  question.question_type === 'ranking' ? '순위형' :
-                    question.question_type === 'image_choice' ? '이미지선택' :
-                      question.question_type === 'image_banner' ? '이미지배너' : '기타';
-
-          let options = '';
-          if (question.question_type === 'image_choice' || question.question_type === 'image_banner') {
-            options = question.image_urls?.map((url, idx) => `이미지${idx + 1}: ${url}`).join(' | ') || '없음';
-          } else {
-            options = question.options?.join(' | ') || '없음';
           }
 
-          // Escape quotes in text fields
-          const safeTitle = (survey.title || '').replace(/"/g, '""');
-          const safeDesc = (survey.description || '').replace(/"/g, '""');
-          const safePurpose = (survey.survey_purpose || '').replace(/"/g, '""');
-          const safeUsagePurpose = (survey.usage_purpose || '').replace(/"/g, '""');
-          const safeCreator = creatorName.replace(/"/g, '""');
-          const safeTarget = targetInfo.replace(/"/g, '""');
-          const safeQText = (question.question_text || '').replace(/"/g, '""');
-          const safeOptions = options.replace(/"/g, '""');
+          return {
+            surveyType: survey.survey_type || '',
+            title: survey.title || '',
+            description: survey.description || '',
+            surveyPurpose: survey.survey_purpose || '',
+            creatorName: creatorName,
+            targetInfo: targetInfo,
+            landingPageUrl: landingUrl,
+            surveyUrl: surveyUrl,
+            secretCode: survey.completion_secret_code || '',
+            scheduledStart: survey.scheduled_start || '',
+            scheduledEnd: survey.scheduled_end || '',
+            questions: survey.questions.map((question, qIdx) => {
+              const questionType = question.question_type === 'multiple_choice' ? '객관식' :
+                question.question_type === 'short_answer' ? '주관식' :
+                  question.question_type === 'numeric_rating' ? '수치평정' :
+                    question.question_type === 'likert_scale' ? '리커트척도' :
+                      question.question_type === 'ranking' ? '순위형' :
+                        question.question_type === 'image_choice' ? '이미지선택' :
+                          question.question_type === 'image_banner' ? '이미지배너' : '기타';
 
-          csvContent += `"${survey.survey_type}","${safeTitle}","${safeDesc}","${safePurpose}","${safeCreator}","${safeTarget}","${landingUrl}","${surveyUrl}","${survey.completion_secret_code}","${startDate}","${endDate}",${qIdx + 1},"${questionType}","${safeQText}","${safeOptions}"\n`;
-        });
-      });
+              const isImageType = question.question_type === 'image_choice' || question.question_type === 'image_banner';
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              return {
+                questionNumber: qIdx + 1,
+                questionType: questionType,
+                questionText: question.question_text || '',
+                ...(isImageType
+                  ? { imageUrls: question.image_urls || [] }
+                  : { options: question.options || null })
+              };
+            })
+          };
+        })
+      };
+
+      const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `설문조사_목록_${formatKST(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
+      link.download = `설문조사_목록_${formatKST(new Date(), 'yyyyMMdd_HHmmss')}.json`;
       link.click();
 
       await Promise.all(
@@ -317,7 +320,7 @@ export default function OrderManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['pendingSurveys']);
       queryClient.invalidateQueries(['reviewSurveys']);
-      alert('엑셀 다운로드가 완료되었습니다. 설문이 검토 대기 상태로 변경되었습니다.');
+      alert('JSON 다운로드가 완료되었습니다. 설문이 검토 대기 상태로 변경되었습니다.');
     },
   });
 
@@ -799,12 +802,12 @@ export default function OrderManagement() {
       {activeTab === 'review' && reviewSurveys.length > 0 && (
         <div className="flex gap-2 w-full">
           <Button
-            onClick={() => downloadExcelMutation.mutate(reviewSurveys)}
-            disabled={downloadExcelMutation.isPending}
+            onClick={() => downloadJsonMutation.mutate(reviewSurveys)}
+            disabled={downloadJsonMutation.isPending}
             className="flex-1 min-w-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
           >
             <Download className="w-4 h-4 mb-1 flex-shrink-0" />
-            <span>{downloadExcelMutation.isPending ? '다운로드 중...' : <>전체 엑셀<br />다운로드</>}</span>
+            <span>{downloadJsonMutation.isPending ? '다운로드 중...' : <>전체 JSON<br />다운로드</>}</span>
           </Button>
           <Button
             onClick={openImageGallery}

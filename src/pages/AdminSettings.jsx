@@ -222,8 +222,8 @@ export default function AdminSettings() {
 
         <div className="flex-1 py-4 px-3 space-y-2 overflow-y-auto">
           <MenuItem id="dashboard" icon={LayoutDashboard} label="대시보드" />
-          <MenuItem id="orders" icon={FileSpreadsheet} label="주문/설문 관리" />
           <MenuItem id="credit" icon={Coins} label="입금 관리" />
+          <MenuItem id="orders" icon={FileSpreadsheet} label="주문/설문 관리" />
           <MenuItem id="users" icon={Users} label="회원/고객 데이터" />
           <MenuItem id="support" icon={MessageSquare} label="고객센터" />
           <MenuItem id="seo" icon={Settings} label="SEO 설정" />

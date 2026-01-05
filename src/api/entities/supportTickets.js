@@ -100,7 +100,7 @@ export const SupportTicket = {
   getAll: async (status = null) => {
     let query = supabase
       .from('support_tickets')
-      .select('*, profiles(email, full_name, custom_name)');
+      .select('*');
 
     if (status) {
       query = query.eq('status', status);
