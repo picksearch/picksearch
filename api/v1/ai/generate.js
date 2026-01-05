@@ -1,50 +1,39 @@
 export const config = {
-  runtime: 'edge',
+  maxDuration: 60, // 60초 타임아웃 (Pro 플랜 필요, Hobby는 10초)
 };
 
-export default async function handler(request) {
+export default async function handler(req, res) {
   // CORS headers
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   // Handle preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  if (request.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { prompt, system_prompt, model = 'gpt-4o-mini', response_json_schema } = await request.json();
+    const { prompt, system_prompt, model = 'gpt-4o-mini', response_json_schema } = req.body;
 
     if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: 'Prompt is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return res.status(400).json({ error: 'Prompt is required' });
     }
 
     // 두 가지 환경변수명 모두 지원
     const openaiApiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
 
     if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({
-          error: 'OpenAI API key not configured',
-          debug: {
-            envKeys: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API'))
-          }
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return res.status(500).json({
+        error: 'OpenAI API key not configured',
+        debug: {
+          envKeys: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API'))
+        }
+      });
     }
 
     const messages = [];
@@ -85,10 +74,7 @@ export default async function handler(request) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      return new Response(
-        JSON.stringify({ error: errorData.error?.message || 'OpenAI API error' }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return res.status(response.status).json({ error: errorData.error?.message || 'OpenAI API error' });
     }
 
     const data = await response.json();
@@ -98,28 +84,16 @@ export default async function handler(request) {
     if (response_json_schema && content) {
       try {
         const parsed = JSON.parse(content);
-        return new Response(
-          JSON.stringify(parsed),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return res.status(200).json(parsed);
       } catch (e) {
-        return new Response(
-          JSON.stringify({ response: content }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return res.status(200).json({ response: content });
       }
     }
 
-    return new Response(
-      JSON.stringify({ response: content }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return res.status(200).json({ response: content });
 
   } catch (error) {
     console.error('AI Generate error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
