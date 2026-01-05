@@ -434,11 +434,19 @@ export default function OrderManagement() {
         await Payment.update(payments[0].id, { status: 'confirmed' });
       }
 
-      // 2. Survey 테이블 업데이트
-      await Survey.update(surveyId, {
-        status: 'review',
-        payment_status: 'paid'
-      });
+      // 2. Survey 테이블 업데이트 (pending일 때만 review로 변경)
+      const surveys = await Survey.filter({ id: surveyId });
+      if (surveys.length > 0 && surveys[0].status === 'pending') {
+        await Survey.update(surveyId, {
+          status: 'review',
+          payment_status: 'paid'
+        });
+      } else {
+        // pending이 아닌 경우 payment_status만 업데이트
+        await Survey.update(surveyId, {
+          payment_status: 'paid'
+        });
+      }
     },
     onSuccess: (_, surveyId) => {
       setSurveyPaymentConfirmed(prev => ({ ...prev, [surveyId]: true }));
