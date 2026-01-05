@@ -7,10 +7,10 @@ export const SurveyReport = {
       .from('survey_reports')
       .select('*')
       .eq('survey_id', surveyId)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
-    return data;
+    if (error) throw error;
+    return data; // null if not found
   },
 
   // Create or update report (upsert)
