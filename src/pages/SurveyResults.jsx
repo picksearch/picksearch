@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { auth } from "@/api/auth";
-import { Survey, Question, Response } from "@/api/entities";
+import { Survey, Question, Response, SurveyReport } from "@/api/entities";
 import { InvokeLLM } from "@/api/integrations";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -36,19 +36,36 @@ export default function SurveyResults() {
   React.useEffect(() => {
     if (selectedSurvey?.isSample) {
       setAiReport(SAMPLE_AI_REPORT);
-    } else if (selectedSurvey?.ai_analysis_data) {
-      setAiReport(selectedSurvey.ai_analysis_data);
-    } else {
-      setAiReport(null);
+      setHyperReportData(null);
+      return;
     }
 
-    // 초정밀 리포트 불러오기
-    if (selectedSurvey?.hyper_precision_report) {
-      setHyperReportData(selectedSurvey.hyper_precision_report);
-    } else {
+    if (!selectedSurvey?.id) {
+      setAiReport(null);
       setHyperReportData(null);
+      return;
     }
-  }, [selectedSurvey]);
+
+    // survey_reports 테이블에서 리포트 데이터 불러오기
+    const loadReportData = async () => {
+      try {
+        const report = await SurveyReport.getBySurveyId(selectedSurvey.id);
+        if (report) {
+          setAiReport(report.ai_analysis_data || null);
+          setHyperReportData(report.hyper_precision_report || null);
+        } else {
+          setAiReport(null);
+          setHyperReportData(null);
+        }
+      } catch (error) {
+        console.error('Failed to load report data:', error);
+        setAiReport(null);
+        setHyperReportData(null);
+      }
+    };
+
+    loadReportData();
+  }, [selectedSurvey?.id, selectedSurvey?.isSample]);
 
   const handlePrintReport = () => {
     const originalTitle = document.title;
@@ -157,13 +174,8 @@ export default function SurveyResults() {
 
       setHyperReportData(result);
 
-      // DB에 저장
-      await Survey.update(selectedSurvey.id, {
-        hyper_precision_report: result
-      });
-
-      // 로컬 상태 업데이트
-      setSelectedSurvey((prev) => ({ ...prev, hyper_precision_report: result }));
+      // survey_reports 테이블에 저장
+      await SurveyReport.updateHyperPrecisionReport(selectedSurvey.id, result);
     } catch (error) {
       console.error('초정밀 리포트 생성 실패:', error);
       alert('리포트 생성에 실패했습니다: ' + error.message);
@@ -704,13 +716,8 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
 
       setAiReport(result);
 
-      // 결과 저장
-      await Survey.update(selectedSurvey.id, {
-        ai_analysis_data: result
-      });
-
-      // 로컬 상태 업데이트
-      setSelectedSurvey((prev) => ({ ...prev, ai_analysis_data: result }));
+      // survey_reports 테이블에 저장
+      await SurveyReport.updateAiAnalysis(selectedSurvey.id, result);
 
     } catch (error) {
       console.error('리포트 생성 실패:', error);
@@ -1814,7 +1821,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                   <Download className="w-4 h-4 text-green-500" />
                   <span>데이터</span>
                 </motion.button>
-                {selectedSurvey?.hyper_precision_report ?
+                {hyperReportData ?
             <motion.button
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}

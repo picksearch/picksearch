@@ -9,6 +9,7 @@ export { FAQ } from './faqs';
 export { SEOSetting } from './seoSettings';
 export { CustomerMemo } from './customerMemos';
 export { SurveyCategory } from './surveyCategories';
+export { SurveyReport } from './surveyReports';
 
 // Re-export auth as User for backward compatibility
 export { auth as User } from '../auth';

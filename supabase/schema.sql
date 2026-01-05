@@ -87,6 +87,44 @@ CREATE TABLE IF NOT EXISTS surveys (
 );
 
 -- =====================================================
+-- 2-1. SURVEY_REPORTS TABLE (AI 분석 리포트 분리)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS survey_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  survey_id UUID REFERENCES surveys(id) ON DELETE CASCADE UNIQUE,
+  ai_analysis_data JSONB,
+  hyper_precision_report JSONB,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_survey_reports_survey_id ON survey_reports(survey_id);
+
+-- RLS for survey_reports
+ALTER TABLE survey_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own survey reports"
+  ON survey_reports FOR SELECT
+  USING (
+    survey_id IN (SELECT id FROM surveys WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+CREATE POLICY "Users can insert own survey reports"
+  ON survey_reports FOR INSERT
+  WITH CHECK (
+    survey_id IN (SELECT id FROM surveys WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+CREATE POLICY "Users can update own survey reports"
+  ON survey_reports FOR UPDATE
+  USING (
+    survey_id IN (SELECT id FROM surveys WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+-- =====================================================
 -- 3. QUESTIONS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS questions (
