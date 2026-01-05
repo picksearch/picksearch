@@ -972,7 +972,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                   paddingAngle={2}
                   dataKey="value"
                   label={renderLabel}
-                  labelLine={true}>
+                  labelLine={false}>
 
                   {chartData.map((entry, index) =>
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

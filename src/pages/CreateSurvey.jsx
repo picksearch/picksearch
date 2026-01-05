@@ -113,6 +113,13 @@ export default function CreateSurvey() {
     const copied = urlParams.get('copy');
     const startStep = urlParams.get('start');
 
+    // draftId가 있으면 temp state 무시하고 직접 draft 로드
+    if (draftId) {
+      localStorage.removeItem('temp_survey_state'); // 이전 temp state 제거
+      loadDraft(draftId);
+      return;
+    }
+
     const tempState = localStorage.getItem('temp_survey_state');
     if (tempState) {
       try {
@@ -145,9 +152,7 @@ export default function CreateSurvey() {
       }
     }
 
-    if (draftId) {
-      loadDraft(draftId);
-    } else if (aiGenerated === 'true') {
+    if (aiGenerated === 'true') {
       loadAIGeneratedSurvey();
     } else if (copied === 'true') {
       loadCopiedSurvey();
@@ -322,7 +327,7 @@ export default function CreateSurvey() {
         }));
 
         setQuestions(reconstructedQuestions);
-        setCurrentStep(0);
+        setCurrentStep(1);
       }
     } catch (error) {
       console.error('Failed to load draft:', error);
@@ -609,7 +614,9 @@ export default function CreateSurvey() {
             customAppText: customAppText || undefined,
             customLocationText: customLocationText || undefined
           } : {},
-          creator_name: user?.custom_name || user?.full_name || user?.email || 'Unknown'
+          creator_name: user?.custom_name || user?.full_name || user?.email || 'Unknown',
+          survey_purpose: purpose || '',
+          usage_purpose: usagePurpose || ''
         });
 
         surveyId = survey.id;
@@ -627,7 +634,9 @@ export default function CreateSurvey() {
             customAppText: customAppText || undefined,
             customLocationText: customLocationText || undefined
           } : {},
-          creator_name: user?.custom_name || user?.full_name || user?.email || 'Unknown'
+          creator_name: user?.custom_name || user?.full_name || user?.email || 'Unknown',
+          survey_purpose: purpose || '',
+          usage_purpose: usagePurpose || ''
         };
 
         if (statusToSave === 'draft') {
@@ -1441,33 +1450,39 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                   무료 이벤트
                 </Badge>
               </div>
+              <p className="text-xs text-red-500 mt-1">타겟은 한 유형만 설정할 수 있습니다.</p>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              <label className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${enableAdditionalTargets ?
-                  'bg-blue-50 border-blue-200 hover:bg-blue-100' :
-                  'bg-gray-50 border-gray-200 hover:bg-gray-100'}`
-              }>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableAdditionalTargets ? 'bg-blue-100' : 'bg-gray-200'}`
+              {(() => {
+                const isDisabled = enableAppTargets || enableLocationTargets;
+                return (
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                    isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
+                    enableAdditionalTargets ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer' :
+                    'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
                   }>
-                    <Target className={`w-5 h-5 ${enableAdditionalTargets ? 'text-blue-600' : 'text-gray-400'}`} />
-                  </div>
-                  <div>
-                    <div className={`font-bold ${enableAdditionalTargets ? 'text-gray-900' : 'text-gray-400'}`}>
-                      추가 타겟 설정
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableAdditionalTargets && !isDisabled ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                        <Target className={`w-5 h-5 ${enableAdditionalTargets && !isDisabled ? 'text-blue-600' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <div className={`font-bold ${enableAdditionalTargets && !isDisabled ? 'text-gray-900' : 'text-gray-400'}`}>
+                          추가 타겟 설정
+                        </div>
+                        <div className={`text-xs ${enableAdditionalTargets && !isDisabled ? 'text-gray-600' : 'text-gray-400'}`}>
+                          관심사, 소득, 직업 등 상세 조건 (조건당 3% 할증)
+                        </div>
+                      </div>
                     </div>
-                    <div className={`text-xs ${enableAdditionalTargets ? 'text-gray-600' : 'text-gray-400'}`}>
-                      관심사, 소득, 직업 등 상세 조건 (조건당 3% 할증)
-                    </div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={enableAdditionalTargets}
-                  onChange={(e) => setEnableAdditionalTargets(e.target.checked)}
-                  className="w-5 h-5 rounded border-blue-300 text-blue-500 focus:ring-blue-500" />
-
-              </label>
+                    <input
+                      type="checkbox"
+                      checked={enableAdditionalTargets}
+                      onChange={(e) => !isDisabled && setEnableAdditionalTargets(e.target.checked)}
+                      disabled={isDisabled}
+                      className="w-5 h-5 rounded border-blue-300 text-blue-500 focus:ring-blue-500 disabled:opacity-50" />
+                  </label>
+                );
+              })()}
 
               {enableAdditionalTargets &&
                 <motion.div
@@ -1574,31 +1589,36 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
 
               <div className="h-px bg-gray-200 my-4" />
 
-              <label className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${enableAppTargets ?
-                  'bg-blue-50 border-blue-200 hover:bg-blue-100' :
-                  'bg-gray-50 border-gray-200 hover:bg-gray-100'}`
-              }>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableAppTargets ? 'bg-blue-100' : 'bg-gray-200'}`
+              {(() => {
+                const isDisabled = enableAdditionalTargets || enableLocationTargets;
+                return (
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                    isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
+                    enableAppTargets ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer' :
+                    'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
                   }>
-                    <Target className={`w-5 h-5 ${enableAppTargets ? 'text-blue-600' : 'text-gray-400'}`} />
-                  </div>
-                  <div>
-                    <div className={`font-bold ${enableAppTargets ? 'text-gray-900' : 'text-gray-400'}`}>
-                      특정 앱 설치 타겟
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableAppTargets && !isDisabled ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                        <Target className={`w-5 h-5 ${enableAppTargets && !isDisabled ? 'text-blue-600' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <div className={`font-bold ${enableAppTargets && !isDisabled ? 'text-gray-900' : 'text-gray-400'}`}>
+                          특정 앱 설치 타겟
+                        </div>
+                        <div className={`text-xs ${enableAppTargets && !isDisabled ? 'text-gray-600' : 'text-gray-400'}`}>
+                          특정 앱을 설치한 사용자 (앱당 5% 할증)
+                        </div>
+                      </div>
                     </div>
-                    <div className={`text-xs ${enableAppTargets ? 'text-gray-600' : 'text-gray-400'}`}>
-                      특정 앱을 설치한 사용자 (앱당 5% 할증)
-                    </div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={enableAppTargets}
-                  onChange={(e) => setEnableAppTargets(e.target.checked)}
-                  className="w-5 h-5 rounded border-blue-300 text-blue-500 focus:ring-blue-500" />
-
-              </label>
+                    <input
+                      type="checkbox"
+                      checked={enableAppTargets}
+                      onChange={(e) => !isDisabled && setEnableAppTargets(e.target.checked)}
+                      disabled={isDisabled}
+                      className="w-5 h-5 rounded border-blue-300 text-blue-500 focus:ring-blue-500 disabled:opacity-50" />
+                  </label>
+                );
+              })()}
 
               {enableAppTargets &&
                 <motion.div
@@ -1651,31 +1671,36 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                 </motion.div>
               }
 
-              <label className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${enableLocationTargets ?
-                  'bg-blue-50 border-blue-200 hover:bg-blue-100' :
-                  'bg-gray-50 border-gray-200 hover:bg-gray-100'}`
-              }>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableLocationTargets ? 'bg-blue-100' : 'bg-gray-200'}`
+              {(() => {
+                const isDisabled = enableAdditionalTargets || enableAppTargets;
+                return (
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                    isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
+                    enableLocationTargets ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer' :
+                    'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
                   }>
-                    <Target className={`w-5 h-5 ${enableLocationTargets ? 'text-blue-600' : 'text-gray-400'}`} />
-                  </div>
-                  <div>
-                    <div className={`font-bold ${enableLocationTargets ? 'text-gray-900' : 'text-gray-400'}`}>
-                      T-map 위치 검색 타겟
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableLocationTargets && !isDisabled ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                        <Target className={`w-5 h-5 ${enableLocationTargets && !isDisabled ? 'text-blue-600' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <div className={`font-bold ${enableLocationTargets && !isDisabled ? 'text-gray-900' : 'text-gray-400'}`}>
+                          T-map 위치 검색 타겟
+                        </div>
+                        <div className={`text-xs ${enableLocationTargets && !isDisabled ? 'text-gray-600' : 'text-gray-400'}`}>
+                          특정 위치를 검색한 사용자 (위치당 5% 할증)
+                        </div>
+                      </div>
                     </div>
-                    <div className={`text-xs ${enableLocationTargets ? 'text-gray-600' : 'text-gray-400'}`}>
-                      특정 위치를 검색한 사용자 (위치당 5% 할증)
-                    </div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={enableLocationTargets}
-                  onChange={(e) => setEnableLocationTargets(e.target.checked)}
-                  className="w-5 h-5 rounded border-blue-300 text-blue-500 focus:ring-blue-500" />
-
-              </label>
+                    <input
+                      type="checkbox"
+                      checked={enableLocationTargets}
+                      onChange={(e) => !isDisabled && setEnableLocationTargets(e.target.checked)}
+                      disabled={isDisabled}
+                      className="w-5 h-5 rounded border-blue-300 text-blue-500 focus:ring-blue-500 disabled:opacity-50" />
+                  </label>
+                );
+              })()}
 
               {enableLocationTargets &&
                 <motion.div
@@ -2301,8 +2326,18 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                   <Input
                     type="number"
                     min="1"
-                    value={slotCount}
-                    onChange={(e) => setSlotCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    value={slotCount === 0 ? '' : slotCount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setSlotCount(0); // 임시로 빈 값 허용
+                      } else {
+                        setSlotCount(Math.max(1, parseInt(val) || 1));
+                      }
+                    }}
+                    onBlur={() => {
+                      if (slotCount < 1) setSlotCount(1); // 포커스 해제 시 최소값 보장
+                    }}
                     className="w-full sm:w-24 h-12 text-center text-xl font-bold rounded-xl" />
 
                 </div>

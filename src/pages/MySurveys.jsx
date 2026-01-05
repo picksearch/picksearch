@@ -91,6 +91,38 @@ export default function MySurveys() {
     staleTime: 30000
   });
 
+  // 실시간 응답 수 조회 (최적화: count 쿼리 사용)
+  const { data: responseCounts = {} } = useQuery({
+    queryKey: ['surveyResponseCounts', surveys?.map(s => s.id).join(',')],
+    queryFn: async () => {
+      if (!surveys || surveys.length === 0) return {};
+      const counts = {};
+
+      // 활성 설문(live)과 무료설문만 실시간 카운트 조회
+      const targetSurveys = surveys.filter(s => s.status === 'live' || s.survey_type === 'free');
+
+      await Promise.all(targetSurveys.map(async (survey) => {
+        try {
+          // 최적화: count 쿼리 사용 (전체 데이터를 가져오지 않음)
+          const count = await Response.getCompletedCount(survey.id);
+          counts[survey.id] = count;
+
+          // Self-healing: DB의 completed_responses가 다르면 업데이트
+          if (survey.completed_responses !== count) {
+            Survey.update(survey.id, { completed_responses: count }).catch(() => {});
+          }
+        } catch (e) {
+          counts[survey.id] = survey.completed_responses || 0;
+        }
+      }));
+
+      return counts;
+    },
+    enabled: surveys?.length > 0,
+    refetchInterval: 5000, // 5초마다 갱신 (더 빠르게)
+    staleTime: 3000
+  });
+
   const updateSurveyCategoryMutation = useMutation({
     mutationFn: async ({ surveyId, category }) => {
       await Survey.update(surveyId, { category });
@@ -102,15 +134,23 @@ export default function MySurveys() {
 
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryName) => {
+      // 1. 해당 카테고리가 지정된 설문들의 카테고리를 null로 변경
       const surveysInCategory = surveys.filter((s) => s.category === categoryName);
       await Promise.all(
         surveysInCategory.map((s) => Survey.update(s.id, { category: null }))
       );
+
+      // 2. DB에서 카테고리 삭제
+      const categoryInDb = dbCategories.find(c => c.name === categoryName);
+      if (categoryInDb) {
+        await SurveyCategory.delete(categoryInDb.id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['mySurveys']);
+      queryClient.invalidateQueries(['surveyCategories']);
       setDeletingCategory(null);
-      alert('카테고리가 삭제되었습니다.');
+      alert('카테고리가 삭제되었습니다. 설문은 유지됩니다.');
     }
   });
 
@@ -622,22 +662,14 @@ export default function MySurveys() {
                   <div className="text-sm font-medium text-gray-700">카테고리 목록</div>
                   <div className="flex flex-wrap gap-2">
                     {allCategories.map((cat) => {
-                      const isFromSurvey = surveys.some(s => s.category === cat);
-                      const isInDb = dbCategories.some(c => c.name === cat);
                       return (
                         <Badge key={cat} className="bg-blue-100 text-blue-700 border-0 pl-3 pr-2 py-1.5 flex items-center gap-2">
                           <Folder className="w-3 h-3" />
                           {cat}
                           <button
-                            onClick={() => {
-                              if (isFromSurvey) {
-                                setDeletingCategory(cat);
-                              } else if (isInDb) {
-                                removeCustomCategory(cat);
-                              }
-                            }}
+                            onClick={() => setDeletingCategory(cat)}
                             className="hover:bg-blue-200 rounded-full p-0.5"
-                            title={isFromSurvey ? "설문에서 카테고리 해제" : "카테고리 삭제"}>
+                            title="카테고리 삭제">
                             <X className="w-3 h-3" />
                           </button>
                         </Badge>
@@ -682,7 +714,7 @@ export default function MySurveys() {
               {filteredSurveys.slice(0, visibleCount).map((survey, index) => {
                 const statusInfo = statusConfig[survey.status] || defaultStatus;
                 const StatusIcon = statusInfo.icon;
-                const actualCompletedCount = survey.completed_responses || 0;
+                const actualCompletedCount = responseCounts[survey.id] ?? survey.completed_responses ?? 0;
 
                 return (
                   <motion.div

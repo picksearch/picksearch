@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "@/api/auth";
-import { Payment, Survey, SystemConfig } from "@/api/entities";
+import { Payment, Survey, SystemConfig, SurveyCategory } from "@/api/entities";
 import { supabase } from "@/api/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Shield, Coins, CheckCircle, XCircle, Clock, Settings,
   Users, Crown, UserCog, Home, LayoutDashboard, FileSpreadsheet,
-  LogOut, Menu, X, ExternalLink, MessageSquare
+  LogOut, Menu, X, ExternalLink, MessageSquare, FolderOpen, Trash2
 } from "lucide-react";
 import AdminSupportManager from "@/components/admin/AdminSupportManager";
 import SEOSettingsManager from "@/components/admin/SEOSettingsManager";
@@ -69,6 +69,12 @@ export default function AdminSettings() {
   const { data: systemConfig, refetch: refetchConfig } = useQuery({
     queryKey: ['systemConfig'],
     queryFn: () => SystemConfig.list(),
+  });
+
+  // 카테고리 목록 조회 (admin은 전체)
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ['adminCategories'],
+    queryFn: () => SurveyCategory.list(),
   });
 
   // Mutations
@@ -152,6 +158,19 @@ export default function AdminSettings() {
     },
   });
 
+  // 카테고리 삭제 mutation
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (categoryId) => SurveyCategory.delete(categoryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['adminCategories']);
+      queryClient.invalidateQueries(['surveyCategories']); // MySurveys 페이지의 카테고리도 갱신
+      alert('카테고리가 삭제되었습니다.');
+    },
+    onError: (error) => {
+      alert('삭제 실패: ' + error.message);
+    }
+  });
+
   React.useEffect(() => {
     if (!userLoading && (userError || !user)) {
       auth.redirectToLogin(window.location.pathname);
@@ -225,6 +244,7 @@ export default function AdminSettings() {
           <MenuItem id="credit" icon={Coins} label="입금 관리" />
           <MenuItem id="orders" icon={FileSpreadsheet} label="주문/설문 관리" />
           <MenuItem id="users" icon={Users} label="회원/고객 데이터" />
+          <MenuItem id="categories" icon={FolderOpen} label="카테고리 관리" />
           <MenuItem id="support" icon={MessageSquare} label="고객센터" />
           <MenuItem id="seo" icon={Settings} label="SEO 설정" />
           <MenuItem id="system" icon={Settings} label="시스템 설정" />
@@ -254,6 +274,7 @@ export default function AdminSettings() {
             {activeTab === 'orders' && '주문 및 설문 관리'}
             {activeTab === 'credit' && '입금 관리'}
             {activeTab === 'users' && '회원 관리'}
+            {activeTab === 'categories' && '카테고리 관리'}
             {activeTab === 'support' && '고객센터 관리'}
             {activeTab === 'seo' && 'SEO(검색엔진 최적화) 설정'}
             {activeTab === 'system' && '시스템 환경설정'}
@@ -500,6 +521,62 @@ export default function AdminSettings() {
                       isOpen={!!selectedUserForMemo} 
                       onClose={() => setSelectedUserForMemo(null)} 
                     />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === 'categories' && (
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FolderOpen className="w-5 h-5" />
+                    전체 카테고리 목록 ({allCategories.length}개)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-500 mb-4">
+                    사용자가 생성한 모든 카테고리를 관리할 수 있습니다. 카테고리를 삭제해도 해당 카테고리가 지정된 설문은 삭제되지 않습니다.
+                  </p>
+                  {allCategories.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl text-gray-500">
+                      등록된 카테고리가 없습니다.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {allCategories.map(category => (
+                        <div
+                          key={category.id}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-200 transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                              <FolderOpen className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-800">{category.name}</div>
+                              <div className="text-xs text-gray-500">
+                                생성일: {formatKST(category.created_at, 'yyyy.MM.dd HH:mm')}
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (window.confirm(`"${category.name}" 카테고리를 삭제하시겠습니까?\n\n해당 카테고리가 지정된 설문은 삭제되지 않습니다.`)) {
+                                deleteCategoryMutation.mutate(category.id);
+                              }
+                            }}
+                            disabled={deleteCategoryMutation.isPending}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            삭제
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>

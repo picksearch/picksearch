@@ -33,9 +33,22 @@ export default async function handler(request) {
     }
 
     const openaiApiKey = process.env.OPENAI_API_KEY;
+
+    // 디버깅: 환경변수 상태 확인
+    console.log('Environment check:', {
+      hasKey: !!openaiApiKey,
+      keyLength: openaiApiKey?.length || 0,
+      keyPrefix: openaiApiKey?.substring(0, 7) || 'none'
+    });
+
     if (!openaiApiKey) {
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        JSON.stringify({
+          error: 'OpenAI API key not configured',
+          debug: {
+            envKeys: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API'))
+          }
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
