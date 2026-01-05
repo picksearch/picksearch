@@ -24,7 +24,16 @@
       "Bash(npm install:*)",
       "Bash(npm run dev:server:*)",
       "Bash(vercel --version:*)",
-      "Bash(vercel --prod:*)"
+      "Bash(vercel --prod:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n로컬 개발 서버 추가 및 코드 정리\n\n- Express 기반 로컬 API 서버 추가 \\(server.js\\)\n- pricingConfigs 엔티티 제거 \\(미사용\\)\n- MySurveys 페이지 개선\n- AdminSettings 간소화\n- Supabase 스키마 및 cron 스케줄러 업데이트\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n카테고리 DB 저장 및 설문 생성 개선\n\n- 카테고리를 localStorage 대신 DB에 저장 \\(survey_categories 테이블\\)\n- 일반 user는 본인이 생성한 카테고리만 조회 가능\n- 결과 활용 목적 필수 입력 필드로 변경\n- 타겟 설문 버튼 클릭 시 step 1로 바로 이동\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(ping:*)",
+      "Bash(cmd //c \"taskkill //PID 32764 //F\")",
+      "Bash(cmd //c \"taskkill //PID 24892 //F\")",
+      "Bash(git commit:*)"
     ]
   }
 }

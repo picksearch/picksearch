@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAMPLE_SURVEY, SAMPLE_QUESTIONS, SAMPLE_RESPONSES, SAMPLE_AI_REPORT } from "@/components/SampleSurveyData";
 import ReactMarkdown from 'react-markdown';
+import { marked } from 'marked';
 
 const COLORS = ['#3182F6', '#0EA5E9', '#8B5CF6', '#F59E0B', '#10B981'];
 
@@ -2147,7 +2148,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                                       <p><strong>생성일:</strong> ${formatKST(new Date(), 'yyyy년 MM월 dd일')}</p>
                                     </div>
                                     <hr/>
-                                    ${hyperReportData.replace(/\n/g, '<br/>')}
+                                    ${marked(hyperReportData)}
                                   </body>
                                 </html>
                               `);
