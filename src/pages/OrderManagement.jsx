@@ -207,6 +207,11 @@ export default function OrderManagement() {
       });
     }
 
+    if (imagesData.length === 0) {
+      alert('검토할 이미지가 없습니다. (이미지 선택형/배너형 문항이 없습니다)');
+      return;
+    }
+
     setAllImages(imagesData);
     setCurrentImageIndex(0);
     setImageGalleryOpen(true);
@@ -423,6 +428,13 @@ export default function OrderManagement() {
   // 입금 확인 mutation
   const confirmPaymentMutation = useMutation({
     mutationFn: async (surveyId) => {
+      // 1. 해당 설문의 Payment 레코드 찾아서 상태 업데이트
+      const payments = await Payment.filter({ survey_id: surveyId, type: 'deposit' });
+      if (payments.length > 0) {
+        await Payment.update(payments[0].id, { status: 'confirmed' });
+      }
+
+      // 2. Survey 테이블 업데이트
       await Survey.update(surveyId, {
         status: 'review',
         payment_status: 'paid'
@@ -432,6 +444,7 @@ export default function OrderManagement() {
       setSurveyPaymentConfirmed(prev => ({ ...prev, [surveyId]: true }));
       queryClient.invalidateQueries(['pendingSurveys']);
       queryClient.invalidateQueries(['reviewSurveys']);
+      queryClient.invalidateQueries(['allCredits']); // AdminSettings 입금 관리 데이터 갱신
       setConfirmingPayment(null);
       alert('입금이 확인되었습니다. 설문이 검토중 상태로 변경되었습니다.');
     },
