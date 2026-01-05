@@ -52,7 +52,12 @@ export default function SurveyResults() {
         const report = await SurveyReport.getBySurveyId(selectedSurvey.id);
         if (report) {
           setAiReport(report.ai_analysis_data || null);
-          setHyperReportData(report.hyper_precision_report || null);
+          // hyper_precision_report가 유효한 문자열인지 검사
+          const hyperReport = report.hyper_precision_report;
+          const isValidHyperReport = hyperReport &&
+            typeof hyperReport === 'string' &&
+            hyperReport.trim().length > 0;
+          setHyperReportData(isValidHyperReport ? hyperReport : null);
         } else {
           setAiReport(null);
           setHyperReportData(null);
