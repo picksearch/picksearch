@@ -564,16 +564,13 @@ export default function CreateFreeSurvey() {
                           <Input
                             type="number"
                             min="2"
-                            max={question.options.length}
                             value={question.max_selections || ''}
                             onChange={(e) => {
                               const val = e.target.value ? parseInt(e.target.value) : null;
-                              // 선택지 개수보다 크면 선택지 개수로 제한
-                              const limitedVal = val && val > question.options.length ? question.options.length : val;
-                              updateQuestion(question.id, { ...question, max_selections: limitedVal });
+                              updateQuestion(question.id, { ...question, max_selections: val });
                             }}
                             placeholder="제한 없음"
-                            className="w-32 h-9 rounded-lg text-sm"
+                            className={`w-32 h-9 rounded-lg text-sm ${question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) ? 'border-red-500' : ''}`}
                           />
                           <span className="text-xs text-gray-500">(비워두면 제한 없음)</span>
                         </div>
@@ -594,16 +591,13 @@ export default function CreateFreeSurvey() {
                           <Input
                             type="number"
                             min="2"
-                            max={question.options.length}
                             value={question.max_selections || ''}
                             onChange={(e) => {
                               const val = e.target.value ? parseInt(e.target.value) : null;
-                              // 선택지 개수보다 크면 선택지 개수로 제한
-                              const limitedVal = val && val > question.options.length ? question.options.length : val;
-                              updateQuestion(question.id, { ...question, max_selections: limitedVal });
+                              updateQuestion(question.id, { ...question, max_selections: val });
                             }}
                             placeholder="제한 없음"
-                            className="w-32 h-9 rounded-lg text-sm"
+                            className={`w-32 h-9 rounded-lg text-sm ${question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) ? 'border-red-500' : ''}`}
                           />
                           <span className="text-xs text-gray-500">(비워두면 전체 순위)</span>
                         </div>
