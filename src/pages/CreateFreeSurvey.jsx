@@ -782,6 +782,10 @@ export default function CreateFreeSurvey() {
                   alert('미리보기할 질문이 없습니다.');
                   return;
                 }
+
+                // iOS Safari에서 팝업 차단 방지: 먼저 창을 열고 URL 설정
+                const newWindow = window.open('', '_blank');
+
                 const previewData = {
                   title,
                   description,
@@ -793,7 +797,12 @@ export default function CreateFreeSurvey() {
                   survey_type: 'free'
                 };
                 localStorage.setItem('survey_preview_data', JSON.stringify(previewData));
-                window.open(`${window.location.origin}${createPageUrl('TakeSurvey')}?preview=true`, '_blank');
+
+                if (newWindow) {
+                  newWindow.location.href = `${window.location.origin}${createPageUrl('TakeSurvey')}?preview=true`;
+                } else {
+                  alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                }
               }}
               variant="outline"
               className="h-11 rounded-xl border-gray-300 text-gray-700 font-bold text-sm"

@@ -1791,6 +1791,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                     return;
                   }
 
+                  // iOS Safari에서 팝업 차단 방지: 먼저 창을 열고 URL 설정
+                  const newWindow = window.open('', '_blank');
+
                   const previewData = {
                     title: title || '미리보기',
                     description: description || '',
@@ -1802,7 +1805,12 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                     survey_type: 'paid'
                   };
                   localStorage.setItem('survey_preview_data', JSON.stringify(previewData));
-                  window.open(`${window.location.origin}${createPageUrl('TakeSurvey')}?preview=true`, '_blank');
+
+                  if (newWindow) {
+                    newWindow.location.href = `${window.location.origin}${createPageUrl('TakeSurvey')}?preview=true`;
+                  } else {
+                    alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                  }
                 }}
                 className="bg-white hover:bg-gray-50 border-2 border-gray-200 text-gray-700 rounded-2xl py-3 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer touch-manipulation"
                 style={{ WebkitTapHighlightColor: 'transparent' }}>
