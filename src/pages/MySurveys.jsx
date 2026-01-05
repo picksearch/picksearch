@@ -300,12 +300,12 @@ export default function MySurveys() {
   const defaultStatus = { label: '알수없음', color: 'bg-gray-100 text-gray-700', icon: AlertCircle };
   const statusConfig = {
     draft: { label: '임시저장', color: 'bg-gray-100 text-gray-700', icon: Edit2 },
-    pending: { label: '설문대기', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle },
-    review: { label: '설문대기', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle },
+    pending: { label: '입금대기', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle },
+    review: { label: '검토중', color: 'bg-orange-100 text-orange-700', icon: Clock },
     scheduled: { label: '예약됨', color: 'bg-blue-100 text-blue-700', icon: Clock },
     live: { label: '진행중', color: 'bg-green-100 text-green-700', icon: CheckCircle },
     closed: { label: '종료', color: 'bg-gray-100 text-gray-700', icon: CheckCircle },
-    rejected: { label: '설문대기', color: 'bg-yellow-100 text-yellow-700', icon: AlertCircle }
+    rejected: { label: '거절됨', color: 'bg-red-100 text-red-700', icon: AlertCircle }
   };
 
   const getTierName = (type) => {
