@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "@/api/auth";
-import { Payment, Survey, PricingConfig, SystemConfig } from "@/api/entities";
+import { Payment, Survey, SystemConfig } from "@/api/entities";
 import { supabase } from "@/api/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Shield, Coins, CheckCircle, XCircle, Clock, DollarSign, Settings,
+  Shield, Coins, CheckCircle, XCircle, Clock, Settings,
   Users, Crown, UserCog, Home, LayoutDashboard, FileSpreadsheet,
   LogOut, Menu, X, ExternalLink, MessageSquare
 } from "lucide-react";
@@ -57,11 +57,6 @@ export default function AdminSettings() {
   const { data: pendingSurveys = [] } = useQuery({
     queryKey: ['pendingSurveysCount'],
     queryFn: () => Survey.filter({ status: 'pending' }),
-  });
-
-  const { data: pricingConfigs = [] } = useQuery({
-    queryKey: ['pricingConfigs'],
-    queryFn: () => PricingConfig.list(),
   });
 
   const { data: systemConfig, refetch: refetchConfig } = useQuery({
@@ -128,16 +123,6 @@ export default function AdminSettings() {
       queryClient.invalidateQueries(['pendingCredits']);
       alert('크레딧 충전이 거절되었습니다.');
     },
-  });
-
-  const updatePricingMutation = useMutation({
-    mutationFn: async ({ id, price, discountRate }) => {
-      await PricingConfig.update(id, {
-        price: parseFloat(price),
-        discount_rate: parseFloat(discountRate)
-      });
-    },
-    onSuccess: () => queryClient.invalidateQueries(['pricingConfigs']),
   });
 
   const toggleUserRoleMutation = useMutation({
@@ -225,7 +210,6 @@ export default function AdminSettings() {
           <MenuItem id="orders" icon={FileSpreadsheet} label="주문/설문 관리" />
           <MenuItem id="credit" icon={Coins} label="크레딧 관리" />
           <MenuItem id="users" icon={Users} label="회원/고객 데이터" />
-          <MenuItem id="pricing" icon={DollarSign} label="가격 설정" />
           <MenuItem id="support" icon={MessageSquare} label="고객센터" />
           <MenuItem id="seo" icon={Settings} label="SEO 설정" />
           <MenuItem id="system" icon={Settings} label="시스템 설정" />
@@ -255,7 +239,6 @@ export default function AdminSettings() {
             {activeTab === 'orders' && '주문 및 설문 관리'}
             {activeTab === 'credit' && '크레딧 충전 관리'}
             {activeTab === 'users' && '회원 관리'}
-            {activeTab === 'pricing' && '가격 정책 설정'}
             {activeTab === 'support' && '고객센터 관리'}
             {activeTab === 'seo' && 'SEO(검색엔진 최적화) 설정'}
             {activeTab === 'system' && '시스템 환경설정'}
@@ -313,17 +296,6 @@ export default function AdminSettings() {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-white border-0 shadow-sm hover:shadow-md transition-all">
-                    <CardContent className="p-6 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center text-green-600">
-                        <DollarSign className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 font-medium">가격 정책</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{pricingConfigs.length}개 항목</h3>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -504,53 +476,6 @@ export default function AdminSettings() {
                   )}
                 </CardContent>
               </Card>
-            )}
-
-            {activeTab === 'pricing' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pricingConfigs.map(config => (
-                  <Card key={config.id} className="border-0 shadow-sm hover:shadow-md transition-all">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <Badge className="bg-green-100 text-green-700 border-0 text-base py-1 px-3">
-                          {config.label}
-                        </Badge>
-                        <div className="text-xs text-gray-400">{config.question_type}</div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">기본 가격 (원)</label>
-                          <Input
-                            type="number"
-                            defaultValue={config.price}
-                            onBlur={(e) => updatePricingMutation.mutate({
-                              id: config.id,
-                              price: e.target.value,
-                              discountRate: config.discount_rate
-                            })}
-                            className="font-bold"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-500 mb-1 block">할인율 (0.0 ~ 1.0)</label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            defaultValue={config.discount_rate}
-                            onBlur={(e) => updatePricingMutation.mutate({
-                              id: config.id,
-                              price: config.price,
-                              discountRate: e.target.value
-                            })}
-                            className="font-bold"
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
             )}
 
             {activeTab === 'support' && (

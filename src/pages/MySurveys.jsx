@@ -16,8 +16,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
-} from
-  "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function MySurveys() {
   const navigate = useNavigate();
@@ -29,6 +35,10 @@ export default function MySurveys() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [visibleCount, setVisibleCount] = useState(5);
   const [deletingCategory, setDeletingCategory] = useState(null);
+  const [customCategories, setCustomCategories] = useState(() => {
+    const saved = localStorage.getItem('customCategories');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [editingSurvey, setEditingSurvey] = useState(null);
   const [editFormData, setEditFormData] = useState({
@@ -191,11 +201,27 @@ export default function MySurveys() {
   };
 
   const allCategories = React.useMemo(() => {
-    const categories = surveys.
-      map((s) => s.category).
-      filter((c) => c && c.trim() !== '');
-    return [...new Set(categories)].sort();
-  }, [surveys]);
+    const surveyCategories = surveys
+      .map((s) => s.category)
+      .filter((c) => c && c.trim() !== '');
+    const combined = [...new Set([...surveyCategories, ...customCategories])];
+    return combined.sort();
+  }, [surveys, customCategories]);
+
+  const addCategory = (name) => {
+    if (name && name.trim() && !allCategories.includes(name.trim())) {
+      const newCategories = [...customCategories, name.trim()];
+      setCustomCategories(newCategories);
+      localStorage.setItem('customCategories', JSON.stringify(newCategories));
+    }
+    setNewCategoryName('');
+  };
+
+  const removeCustomCategory = (name) => {
+    const newCategories = customCategories.filter(c => c !== name);
+    setCustomCategories(newCategories);
+    localStorage.setItem('customCategories', JSON.stringify(newCategories));
+  };
 
   const defaultStatus = { label: '알수없음', color: 'bg-gray-100 text-gray-700', icon: AlertCircle };
   const statusConfig = {
@@ -255,18 +281,9 @@ export default function MySurveys() {
     }
   };
 
-  const getStatusGroup = (status) => {
-    if (status === 'live' || status === 'scheduled') return 'active';
-    if (status === 'pending' || status === 'review' || status === 'rejected') return 'pending';
-    if (status === 'draft') return 'draft';
-    if (status === 'closed') return 'closed';
-    return 'other';
-  };
-
   const filteredSurveys = React.useMemo(() => {
     return surveys.filter((survey) => {
-      const statusGroup = getStatusGroup(survey.status);
-      const statusMatch = statusFilter === 'all' || statusGroup === statusFilter;
+      const statusMatch = statusFilter === 'all' || survey.status === statusFilter;
       const categoryMatch = categoryFilter === 'all' || (
         categoryFilter === 'uncategorized' ? !survey.category : survey.category === categoryFilter);
       const searchMatch = !searchTerm ||
@@ -282,10 +299,12 @@ export default function MySurveys() {
 
   const statusCounts = React.useMemo(() => {
     return {
-      active: surveys.filter((s) => getStatusGroup(s.status) === 'active').length,
-      pending: surveys.filter((s) => getStatusGroup(s.status) === 'pending').length,
-      draft: surveys.filter((s) => getStatusGroup(s.status) === 'draft').length,
-      closed: surveys.filter((s) => getStatusGroup(s.status) === 'closed').length
+      pending: surveys.filter((s) => s.status === 'pending').length,
+      review: surveys.filter((s) => s.status === 'review').length,
+      scheduled: surveys.filter((s) => s.status === 'scheduled').length,
+      live: surveys.filter((s) => s.status === 'live').length,
+      closed: surveys.filter((s) => s.status === 'closed').length,
+      rejected: surveys.filter((s) => s.status === 'rejected').length
     };
   }, [surveys]);
 
@@ -443,8 +462,23 @@ export default function MySurveys() {
 
         {/* Filters & Search Area */}
         <div className="space-y-3">
-          {/* Search & Category Settings Row */}
+          {/* Search & Filter Row */}
           <div className="flex gap-2 items-center">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36 rounded-xl bg-white border-gray-200 h-11 shadow-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 ({surveys.length})</SelectItem>
+                <SelectItem value="pending">입금대기 ({statusCounts.pending})</SelectItem>
+                <SelectItem value="review">검토중 ({statusCounts.review})</SelectItem>
+                <SelectItem value="scheduled">진행예정 ({statusCounts.scheduled})</SelectItem>
+                <SelectItem value="live">진행중 ({statusCounts.live})</SelectItem>
+                <SelectItem value="closed">종료 ({statusCounts.closed})</SelectItem>
+                <SelectItem value="rejected">거절됨 ({statusCounts.rejected})</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -469,44 +503,6 @@ export default function MySurveys() {
 
               <FolderPlus className="w-5 h-5" />
             </Button>
-          </div>
-
-          {/* Status Filter Buttons */}
-          <div className="grid grid-cols-5 gap-2">
-            {[
-              { id: 'all', label: '전체', icon: '📂', count: surveys.length, color: 'bg-gray-50', activeColor: 'bg-white', borderColor: 'border-gray-200', activeBorder: 'border-blue-200' },
-              { id: 'draft', label: '임시저장', icon: '💾', count: statusCounts.draft, color: 'bg-indigo-50', activeColor: 'bg-indigo-50', borderColor: 'border-indigo-100', activeBorder: 'border-indigo-200' },
-              { id: 'pending', label: '대기', icon: '⏳', count: statusCounts.pending, color: 'bg-blue-50', activeColor: 'bg-blue-50', borderColor: 'border-blue-100', activeBorder: 'border-blue-200' },
-              { id: 'active', label: '진행중', icon: '🔥', count: statusCounts.active, color: 'bg-orange-50', activeColor: 'bg-orange-50', borderColor: 'border-orange-100', activeBorder: 'border-orange-200' },
-              { id: 'closed', label: '종료', icon: '✅', count: statusCounts.closed, color: 'bg-green-50', activeColor: 'bg-green-50', borderColor: 'border-green-100', activeBorder: 'border-green-200' }].
-              map((item) => {
-                const isActive = statusFilter === item.id;
-                return (
-                  <motion.button
-                    key={item.id}
-                    onClick={() => setStatusFilter(item.id)}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ y: 0, scale: 0.98 }}
-                    className={`
-                    relative flex flex-col items-center justify-center py-2.5 rounded-2xl transition-all border border-b-[4px] active:border-b-0 active:mt-[4px] active:mb-0 mb-[4px]
-                    ${isActive ? `${item.activeColor} ${item.activeBorder}` : `bg-white border-gray-100`}
-                  `}
-                    style={{
-                      boxShadow: isActive ? '0 4px 12px -2px rgba(0,0,0,0.05)' : 'none'
-                    }}>
-
-                    <span className="text-xl mb-0.5 filter drop-shadow-sm">{item.icon}</span>
-                    <span className={`text-[10px] font-bold ${isActive ? 'text-gray-800' : 'text-gray-400'}`}>
-                      {item.label}
-                    </span>
-                    {item.count > 0 &&
-                      <span className={`absolute top-1 right-1 min-w-[16px] h-4 px-1 text-[9px] flex items-center justify-center rounded-full font-bold ${isActive ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                        {item.count}
-                      </span>
-                    }
-                  </motion.button>);
-
-              })}
           </div>
 
           {/* Category Chips */}
@@ -576,47 +572,49 @@ export default function MySurveys() {
                   className="rounded-xl"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && newCategoryName.trim()) {
-                      if (!allCategories.includes(newCategoryName.trim())) {
-                        alert('카테고리가 생성되었습니다.');
-                      }
-                      setNewCategoryName('');
+                      addCategory(newCategoryName);
                     }
                   }} />
 
                 <Button
-                  onClick={() => {
-                    if (newCategoryName.trim()) {
-                      if (!allCategories.includes(newCategoryName.trim())) {
-                        alert('카테고리가 생성되었습니다.');
-                      }
-                      setNewCategoryName('');
-                    }
-                  }}
-                  className="bg-purple-500 hover:bg-purple-600 rounded-xl">
+                  onClick={() => addCategory(newCategoryName)}
+                  className="bg-blue-500 hover:bg-blue-600 rounded-xl">
 
                   <FolderPlus className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="text-xs text-gray-500">
-                💡 카테고리는 설문을 이동하면 자동으로 생성됩니다
-              </div>
               {allCategories.length > 0 &&
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-gray-700">기존 카테고리</div>
+                  <div className="text-sm font-medium text-gray-700">카테고리 목록</div>
                   <div className="flex flex-wrap gap-2">
-                    {allCategories.map((cat) =>
-                      <Badge key={cat} className="bg-purple-100 text-purple-700 border-0 pl-3 pr-2 py-1.5 flex items-center gap-2">
-                        <Folder className="w-3 h-3" />
-                        {cat}
-                        <button
-                          onClick={() => setDeletingCategory(cat)}
-                          className="hover:bg-purple-200 rounded-full p-0.5">
-
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    )}
+                    {allCategories.map((cat) => {
+                      const isFromSurvey = surveys.some(s => s.category === cat);
+                      const isCustom = customCategories.includes(cat);
+                      return (
+                        <Badge key={cat} className="bg-blue-100 text-blue-700 border-0 pl-3 pr-2 py-1.5 flex items-center gap-2">
+                          <Folder className="w-3 h-3" />
+                          {cat}
+                          <button
+                            onClick={() => {
+                              if (isFromSurvey) {
+                                setDeletingCategory(cat);
+                              } else {
+                                removeCustomCategory(cat);
+                              }
+                            }}
+                            className="hover:bg-blue-200 rounded-full p-0.5"
+                            title={isFromSurvey ? "설문에서 카테고리 해제" : "카테고리 삭제"}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
                   </div>
+                </div>
+              }
+              {allCategories.length === 0 &&
+                <div className="text-xs text-gray-400 text-center py-2">
+                  카테고리가 없습니다. 위에서 새 카테고리를 추가하세요.
                 </div>
               }
             </CardContent>

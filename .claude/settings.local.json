@@ -6,7 +6,25 @@
       "Bash(del \"c:\\\\picksearch\\\\src\\\\api\\\\base44Client.js\")",
       "Bash(npm install react-markdown)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill /PID 29976 /F)",
+      "Bash(cmd /c \"taskkill /PID 29976 /F\")",
+      "Bash(powershell -Command \"Stop-Process -Id 29976 -Force\")",
+      "Bash(cat:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 12516, 5240 -Force\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n주문관리 페이지 개선 및 입금 상태 관리 기능 추가\n\n- surveys 테이블에 payment_status 컬럼 추가 \\(unpaid/paid\\)\n- 입금확인 버튼 추가 및 입금 완료 시 비활성화 표시\n- 설문 시작 예약 기능 개선 \\(시작예약/즉시시작 버튼 분리\\)\n- 드롭다운 기본값 ''전체''로 변경\n- pending 상태 배지를 ''입금대기''로 변경\n- pg_cron 스케줄러 추가 \\(예약된 설문 자동 시작\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git merge:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n기타 파일 업데이트\n\n- API 통합 및 페이지 수정 사항 반영\n- AI 생성 API 추가\n- Vite 설정 업데이트\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(del \"C:\\\\Picksearch\\\\src\\\\api\\\\entities\\\\pricingConfigs.js\")",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:server:*)",
+      "Bash(vercel --version:*)",
+      "Bash(vercel --prod:*)"
     ]
   }
 }

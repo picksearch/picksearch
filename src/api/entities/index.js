@@ -3,7 +3,6 @@ export { Survey } from './surveys';
 export { Question } from './questions';
 export { Response } from './responses';
 export { Payment } from './payments';
-export { PricingConfig } from './pricingConfigs';
 export { SystemConfig } from './systemConfigs';
 export { SupportTicket } from './supportTickets';
 export { FAQ } from './faqs';

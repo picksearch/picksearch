@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS surveys (
   landing_image_url TEXT,
   scheduled_start TIMESTAMPTZ,
   scheduled_end TIMESTAMPTZ,
+  category TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -156,22 +157,7 @@ CREATE TABLE IF NOT EXISTS coin_transactions (
 );
 
 -- =====================================================
--- 7. PRICING CONFIGS TABLE
--- =====================================================
-CREATE TABLE IF NOT EXISTS pricing_configs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  price_per_response INTEGER NOT NULL,
-  min_responses INTEGER DEFAULT 1,
-  max_responses INTEGER,
-  features JSONB,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- =====================================================
--- 8. SYSTEM CONFIGS TABLE
+-- 7. SYSTEM CONFIGS TABLE
 -- =====================================================
 CREATE TABLE IF NOT EXISTS system_configs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -263,7 +249,6 @@ ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coin_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pricing_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
@@ -362,15 +347,6 @@ CREATE POLICY "Admins can manage all coin transactions" ON coin_transactions
     is_admin()
   );
 
--- PRICING_CONFIGS policies (read-only for users)
-CREATE POLICY "Anyone can view active pricing" ON pricing_configs
-  FOR SELECT USING (is_active = true);
-
-CREATE POLICY "Admins can manage pricing" ON pricing_configs
-  FOR ALL USING (
-    is_admin()
-  );
-
 -- SYSTEM_CONFIGS policies
 CREATE POLICY "Anyone can view system configs" ON system_configs
   FOR SELECT USING (true);
@@ -437,9 +413,6 @@ CREATE TRIGGER update_surveys_updated_at BEFORE UPDATE ON surveys
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_credit_transactions_updated_at BEFORE UPDATE ON credit_transactions
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER update_pricing_configs_updated_at BEFORE UPDATE ON pricing_configs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER update_system_configs_updated_at BEFORE UPDATE ON system_configs

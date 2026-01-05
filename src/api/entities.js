@@ -3,7 +3,6 @@ export { Survey } from './entities/surveys';
 export { Question } from './entities/questions';
 export { Response } from './entities/responses';
 export { Payment } from './entities/payments';
-export { PricingConfig } from './entities/pricingConfigs';
 export { SystemConfig } from './entities/systemConfigs';
 export { SupportTicket } from './entities/supportTickets';
 export { FAQ } from './entities/faqs';
