@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { auth } from "@/api/auth";
-import { Payment, Survey, SystemConfig, SurveyCategory } from "@/api/entities";
+import { Payment, Survey, SystemConfig, SurveyCategory, SupportTicket } from "@/api/entities";
 import { supabase } from "@/api/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,7 @@ export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [selectedUserForMemo, setSelectedUserForMemo] = useState(null);
+  const [selectedUserForTickets, setSelectedUserForTickets] = useState(null);
 
   const { data: user, isLoading: userLoading, error: userError } = useQuery({
     queryKey: ['currentUser'],
@@ -60,6 +61,22 @@ export default function AdminSettings() {
       return data || [];
     },
   });
+
+  // 전체 문의 내역 조회
+  const { data: allTickets = [] } = useQuery({
+    queryKey: ['allTickets'],
+    queryFn: () => SupportTicket.getAll(),
+  });
+
+  // 사용자별 문의 수 계산
+  const getTicketCountByUser = (userId) => {
+    return allTickets.filter(t => t.user_id === userId).length;
+  };
+
+  // 사용자별 문의 내역 가져오기
+  const getTicketsByUser = (userId) => {
+    return allTickets.filter(t => t.user_id === userId);
+  };
 
   const { data: pendingSurveys = [] } = useQuery({
     queryKey: ['pendingSurveysCount'],
@@ -459,8 +476,8 @@ export default function AdminSettings() {
                       <thead>
                         <tr className="border-b border-gray-100 text-left">
                           <th className="py-3 px-4 text-sm font-medium text-gray-500">회원정보</th>
-                          <th className="py-3 px-4 text-sm font-medium text-gray-500">크레딧</th>
                           <th className="py-3 px-4 text-sm font-medium text-gray-500">가입일</th>
+                          <th className="py-3 px-4 text-sm font-medium text-gray-500">문의 내역</th>
                           <th className="py-3 px-4 text-sm font-medium text-gray-500">권한</th>
                           <th className="py-3 px-4 text-sm font-medium text-gray-500 text-right">관리</th>
                         </tr>
@@ -472,11 +489,23 @@ export default function AdminSettings() {
                               <div className="font-bold text-gray-900">{u.full_name || '이름 없음'}</div>
                               <div className="text-sm text-gray-500">{u.email}</div>
                             </td>
-                            <td className="py-4 px-4">
-                              <span className="font-medium text-gray-700">{(u.credits || 0).toLocaleString()}</span>
-                            </td>
                             <td className="py-4 px-4 text-sm text-gray-500">
                               {formatKST(u.created_at, 'yyyy.MM.dd')}
+                            </td>
+                            <td className="py-4 px-4">
+                              {getTicketCountByUser(u.id) > 0 ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setSelectedUserForTickets(u)}
+                                  className="text-xs h-7 text-orange-600 hover:bg-orange-50"
+                                >
+                                  <MessageSquare className="w-3 h-3 mr-1" />
+                                  {getTicketCountByUser(u.id)}건
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-gray-400">없음</span>
+                              )}
                             </td>
                             <td className="py-4 px-4">
                               <Badge className={`${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'} border-0`}>
@@ -516,12 +545,77 @@ export default function AdminSettings() {
                   </div>
                   
                   {selectedUserForMemo && (
-                    <CustomerMemoModal 
-                      user={selectedUserForMemo} 
-                      isOpen={!!selectedUserForMemo} 
-                      onClose={() => setSelectedUserForMemo(null)} 
+                    <CustomerMemoModal
+                      user={selectedUserForMemo}
+                      isOpen={!!selectedUserForMemo}
+                      onClose={() => setSelectedUserForMemo(null)}
                     />
                   )}
+
+                  {/* 문의 내역 모달 */}
+                  <AnimatePresence>
+                    {selectedUserForTickets && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSelectedUserForTickets(null)}
+                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+                      >
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-[90%] max-w-[600px] max-h-[80vh] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between p-4 border-b">
+                            <div>
+                              <h3 className="font-bold text-lg">{selectedUserForTickets.full_name || '이름 없음'}님의 문의 내역</h3>
+                              <p className="text-sm text-gray-500">{selectedUserForTickets.email}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedUserForTickets(null)}
+                            >
+                              <X className="w-5 h-5" />
+                            </Button>
+                          </div>
+                          <div className="flex-1 overflow-y-auto p-4">
+                            {getTicketsByUser(selectedUserForTickets.id).length === 0 ? (
+                              <div className="text-center py-8 text-gray-500">
+                                문의 내역이 없습니다.
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {getTicketsByUser(selectedUserForTickets.id).map(ticket => (
+                                  <div key={ticket.id} className="border rounded-xl p-4 bg-gray-50">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <Badge className={`${ticket.status === 'open' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'} border-0`}>
+                                        {ticket.status === 'open' ? '대기중' : '답변완료'}
+                                      </Badge>
+                                      <span className="text-xs text-gray-400">
+                                        {formatKST(ticket.created_at, 'yyyy.MM.dd HH:mm')}
+                                      </span>
+                                    </div>
+                                    <h4 className="font-medium text-gray-900 mb-1">{ticket.subject}</h4>
+                                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{ticket.message}</p>
+                                    {ticket.admin_response && (
+                                      <div className="mt-3 pt-3 border-t border-gray-200">
+                                        <p className="text-xs text-gray-500 mb-1">관리자 답변</p>
+                                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{ticket.admin_response}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </CardContent>
               </Card>
             )}

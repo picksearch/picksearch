@@ -31,6 +31,9 @@ export default function OrderManagement() {
   const [imageGalleryOpen, setImageGalleryOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [allImages, setAllImages] = useState([]);
+  const [reviewCompleted, setReviewCompleted] = useState(false);
+  const [surveyReviewCompleted, setSurveyReviewCompleted] = useState({}); // 개별 설문 검수 완료 상태
+  const [currentReviewingSurveyId, setCurrentReviewingSurveyId] = useState(null); // 현재 검수 중인 설문 ID
 
   // 입금 확인 팝업 상태
   const [confirmingPayment, setConfirmingPayment] = useState(null);
@@ -169,13 +172,18 @@ export default function OrderManagement() {
     loadAllDepositors();
   }, [pendingSurveys, reviewSurveys, liveSurveys, closedSurveys, rejectedSurveys]);
 
-  const openImageGallery = async () => {
-    const imagesData = [];
-
+  // 설문 일괄 검수하기: JSON 다운로드 + 이미지 검수 모달 열기
+  const handleBulkReview = async () => {
     if (!reviewSurveys || reviewSurveys.length === 0) {
-      alert('검토할 이미지가 없습니다.');
+      alert('검토할 설문이 없습니다.');
       return;
     }
+
+    // 1. JSON 다운로드 실행
+    downloadJsonMutation.mutate(reviewSurveys);
+
+    // 2. 이미지 검수 모달 열기
+    const imagesData = [];
 
     for (const survey of reviewSurveys) {
       const questions = await Question.filter({ survey_id: survey.id }, 'order');
@@ -208,7 +216,75 @@ export default function OrderManagement() {
     }
 
     if (imagesData.length === 0) {
-      alert('검토할 이미지가 없습니다. (이미지 선택형/배너형 문항이 없습니다)');
+      // 이미지가 없으면 바로 검수 완료 처리
+      setReviewCompleted(true);
+      alert('검토할 이미지가 없습니다. 검수가 완료되었습니다.');
+      return;
+    }
+
+    setAllImages(imagesData);
+    setCurrentImageIndex(0);
+    setImageGalleryOpen(true);
+  };
+
+  // 이미지 검수 완료 처리
+  const handleReviewComplete = () => {
+    if (confirm('검수를 완료하시겠습니까?')) {
+      setImageGalleryOpen(false);
+
+      // 개별 설문 검수인 경우
+      if (currentReviewingSurveyId) {
+        setSurveyReviewCompleted(prev => ({ ...prev, [currentReviewingSurveyId]: true }));
+        setCurrentReviewingSurveyId(null);
+      } else {
+        // 일괄 검수인 경우
+        setReviewCompleted(true);
+      }
+    }
+  };
+
+  // 개별 설문 검수하기: 해당 설문만 JSON 다운로드 + 이미지 검수 모달 열기
+  const handleSingleSurveyReview = async (survey) => {
+    // 1. 해당 설문 JSON 다운로드
+    downloadJsonMutation.mutate([survey]);
+
+    // 2. 현재 검수 중인 설문 ID 저장
+    setCurrentReviewingSurveyId(survey.id);
+
+    // 3. 해당 설문의 이미지만 검수 모달 열기
+    const imagesData = [];
+    const questions = await Question.filter({ survey_id: survey.id }, 'order');
+
+    questions.forEach((question, qIdx) => {
+      if (question.question_type === 'image_choice' && question.image_urls) {
+        question.image_urls.forEach((url, imgIdx) => {
+          imagesData.push({
+            url,
+            surveyTitle: survey.title,
+            questionText: question.question_text,
+            questionNumber: qIdx + 1,
+            imageNumber: imgIdx + 1,
+            questionType: 'image_choice'
+          });
+        });
+      }
+
+      if (question.question_type === 'image_banner' && question.image_urls && question.image_urls.length > 0) {
+        imagesData.push({
+          url: question.image_urls[0],
+          surveyTitle: survey.title,
+          questionText: question.question_text,
+          questionNumber: qIdx + 1,
+          imageNumber: 1,
+          questionType: 'image_banner'
+        });
+      }
+    });
+
+    if (imagesData.length === 0) {
+      // 이미지가 없으면 바로 검수 완료 처리
+      setSurveyReviewCompleted(prev => ({ ...prev, [survey.id]: true }));
+      alert('검토할 이미지가 없습니다. 검수가 완료되었습니다.');
       return;
     }
 
@@ -325,7 +401,7 @@ export default function OrderManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['pendingSurveys']);
       queryClient.invalidateQueries(['reviewSurveys']);
-      alert('JSON 다운로드가 완료되었습니다. 설문이 검토 대기 상태로 변경되었습니다.');
+      alert('JSON 파일 다운로드가 완료되었습니다. 이미지 검수를 끝까지 진행 후 이미지 검수 완료 버튼을 눌러주세요.');
     },
   });
 
@@ -348,8 +424,7 @@ export default function OrderManagement() {
       await Promise.all(
         reviewSurveys.map(survey =>
           Survey.update(survey.id, {
-            status: 'live',
-            scheduled_start: new Date().toISOString()
+            status: 'scheduled'
           })
         )
       );
@@ -357,7 +432,7 @@ export default function OrderManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['reviewSurveys']);
       queryClient.invalidateQueries(['liveSurveys']);
-      alert(`${reviewSurveys.length}개의 설문이 일괄 시작되었습니다!`);
+      alert(`${reviewSurveys.length}개의 설문이 일괄 예약되었습니다!`);
     },
   });
 
@@ -714,7 +789,7 @@ export default function OrderManagement() {
 
       {/* Image Gallery Modal */}
       {imageGalleryOpen && allImages.length > 0 && (
-        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4 pb-24">
           <button
             onClick={() => setImageGalleryOpen(false)}
             className="absolute top-4 right-4 text-white hover:text-gray-300 text-2xl w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
@@ -722,12 +797,14 @@ export default function OrderManagement() {
             ×
           </button>
 
-          <button
-            onClick={() => setCurrentImageIndex(prev => (prev - 1 + allImages.length) % allImages.length)}
-            className="absolute left-4 text-white text-4xl w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
-          >
-            ‹
-          </button>
+          {currentImageIndex > 0 && (
+            <button
+              onClick={() => setCurrentImageIndex(prev => prev - 1)}
+              className="absolute left-4 text-purple-400 text-4xl w-12 h-12 flex items-center justify-center rounded-full bg-purple-500/30 hover:bg-purple-500/50"
+            >
+              ‹
+            </button>
+          )}
 
           <div className="max-w-4xl w-full">
             <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
@@ -755,19 +832,32 @@ export default function OrderManagement() {
                   <div className="text-sm text-gray-500 mb-1">질문 {currentImage.questionNumber}</div>
                   <div className="text-gray-700">{currentImage.questionText}</div>
                 </div>
-                <div className="text-xs text-gray-400 pt-2 border-t">
-                  ← → 키로 이동 | ESC로 닫기
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="text-xs text-gray-400">
+                    ← → 키로 이동 | ESC로 닫기
+                  </div>
+                  {currentImageIndex === allImages.length - 1 && (
+                    <Button
+                      onClick={handleReviewComplete}
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl px-4 py-2"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      이미지 검수 완료
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          <button
-            onClick={() => setCurrentImageIndex(prev => (prev + 1) % allImages.length)}
-            className="absolute right-4 text-white text-4xl w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
-          >
-            ›
-          </button>
+          {currentImageIndex < allImages.length - 1 && (
+            <button
+              onClick={() => setCurrentImageIndex(prev => prev + 1)}
+              className="absolute right-4 text-purple-400 text-4xl w-12 h-12 flex items-center justify-center rounded-full bg-purple-500/30 hover:bg-purple-500/50"
+            >
+              ›
+            </button>
+          )}
         </div>
       )}
 
@@ -819,35 +909,28 @@ export default function OrderManagement() {
         </div>
       </div>
 
-      {/* Action Buttons - 검토중일 때만 표시 */}
-      {activeTab === 'review' && reviewSurveys.length > 0 && (
+      {/* Action Buttons - review 상태 설문이 있을 때 표시 */}
+      {reviewSurveys.length > 0 && (
         <div className="flex gap-2 w-full">
           <Button
-            onClick={() => downloadJsonMutation.mutate(reviewSurveys)}
-            disabled={downloadJsonMutation.isPending}
-            className="flex-1 min-w-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
-          >
-            <Download className="w-4 h-4 mb-1 flex-shrink-0" />
-            <span>{downloadJsonMutation.isPending ? '다운로드 중...' : <>전체 JSON<br />다운로드</>}</span>
-          </Button>
-          <Button
-            onClick={openImageGallery}
-            className="flex-1 min-w-0 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
+            onClick={handleBulkReview}
+            disabled={downloadJsonMutation.isPending || reviewCompleted}
+            className={`flex-1 min-w-0 ${reviewCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-500 to-pink-500'} text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col`}
           >
             <FileSpreadsheet className="w-4 h-4 mb-1 flex-shrink-0" />
-            <span>이미지<br />검수하기</span>
+            <span>{downloadJsonMutation.isPending ? '처리 중...' : reviewCompleted ? <>검수 완료됨</> : <>설문 일괄<br />검수하기</>}</span>
           </Button>
           <Button
             onClick={() => {
-              if (confirm(`${reviewSurveys.length}개의 설문을 모두 시작하시겠습니까?`)) {
+              if (confirm(`${reviewSurveys.length}개의 설문을 모두 예약하시겠습니까?`)) {
                 startAllReviewMutation.mutate();
               }
             }}
-            disabled={startAllReviewMutation.isPending}
-            className="flex-1 min-w-0 bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col"
+            disabled={startAllReviewMutation.isPending || !reviewCompleted}
+            className={`flex-1 min-w-0 ${!reviewCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-blue-500 to-indigo-500'} text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col`}
           >
             <CheckCircle className="w-4 h-4 mb-1 flex-shrink-0" />
-            <span>{startAllReviewMutation.isPending ? '시작 중...' : <>설문 일괄<br />시작하기</>}</span>
+            <span>{startAllReviewMutation.isPending ? '예약 중...' : <>설문 일괄<br />예약하기</>}</span>
           </Button>
         </div>
       )}
@@ -878,6 +961,13 @@ export default function OrderManagement() {
                       </div>
                       <div className="text-sm text-gray-500 mb-2">{survey.description}</div>
                       <div className="flex flex-wrap gap-2">
+                        <Badge className={
+                          survey.survey_type === 'free'
+                            ? 'bg-emerald-100 text-emerald-700 border-0'
+                            : 'bg-purple-100 text-purple-700 border-0'
+                        }>
+                          {survey.survey_type === 'free' ? '무료설문' : '타겟설문'}
+                        </Badge>
                         <Badge className={
                           survey.status === 'pending' ? 'bg-yellow-100 text-yellow-700 border-0' :
                             survey.status === 'review' ? 'bg-orange-100 text-orange-700 border-0' :
@@ -958,6 +1048,17 @@ export default function OrderManagement() {
                   >
                     {expandedSurvey === survey.id ? '▲ 질문 숨기기' : '▼ 질문 및 이미지 보기'}
                   </Button>
+
+                  {survey.status === 'review' && (
+                    <Button
+                      onClick={() => handleSingleSurveyReview(survey)}
+                      disabled={downloadJsonMutation.isPending || surveyReviewCompleted[survey.id]}
+                      className={`w-full ${surveyReviewCompleted[survey.id] ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-500 to-pink-500'} text-white rounded-lg text-xs`}
+                    >
+                      <FileSpreadsheet className="w-4 h-4 mr-1" />
+                      {downloadJsonMutation.isPending ? '처리 중...' : surveyReviewCompleted[survey.id] ? '검수 완료됨' : '설문 검수하기'}
+                    </Button>
+                  )}
 
                   {expandedSurvey === survey.id && surveyQuestions[survey.id] && (
                     <div className="bg-gray-50 rounded-xl p-4 space-y-3 max-h-96 overflow-y-auto">
@@ -1053,7 +1154,7 @@ export default function OrderManagement() {
                   )}
 
 
-                  {activeTab === 'review' && (
+                  {survey.status === 'review' && (
                     <div className="flex gap-2">
                       {survey.scheduled_start && (
                         <Button
@@ -1065,8 +1166,8 @@ export default function OrderManagement() {
                               });
                             }
                           }}
-                          disabled={startSurveyMutation.isPending}
-                          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"
+                          disabled={startSurveyMutation.isPending || !surveyReviewCompleted[survey.id]}
+                          className={`flex-1 ${!surveyReviewCompleted[survey.id] ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-xl text-sm`}
                         >
                           <Clock className="w-4 h-4 mr-1" />
                           시작 예약
@@ -1081,8 +1182,8 @@ export default function OrderManagement() {
                             });
                           }
                         }}
-                        disabled={startSurveyMutation.isPending}
-                        className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm"
+                        disabled={startSurveyMutation.isPending || !surveyReviewCompleted[survey.id]}
+                        className={`flex-1 ${!surveyReviewCompleted[survey.id] ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'} text-white rounded-xl text-sm`}
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
                         즉시 시작

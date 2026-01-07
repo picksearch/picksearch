@@ -49,7 +49,7 @@ export default function ClientHomeFooter() {
                 </div>
                 <div className="grid grid-cols-[100px_1fr] gap-1">
                   <span className="font-medium text-gray-400">주소</span>
-                  <span>서울시 강남구 영동대로 602, 6층 k45</span>
+                  <span>서울시 금천구 가산디지털2로 143, 5층 508호</span>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] gap-1">
                   <span className="font-medium text-gray-400">사업자번호</span>

@@ -17,12 +17,12 @@ RETURNS void AS $$
 DECLARE
   updated_count INTEGER;
 BEGIN
-  -- Update all scheduled surveys where scheduled_start has passed
+  -- Update all scheduled surveys where scheduled_start + 8 hours (08:00 AM) has passed
   UPDATE surveys
   SET status = 'live',
       updated_at = now()
   WHERE status = 'scheduled'
-    AND scheduled_start <= now();
+    AND (scheduled_start::date + INTERVAL '8 hours') <= now();
 
   GET DIAGNOSTICS updated_count = ROW_COUNT;
 
