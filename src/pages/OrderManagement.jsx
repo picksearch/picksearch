@@ -617,6 +617,10 @@ export default function OrderManagement() {
   const scheduledSurveys = liveSurveys.filter(s => s.status === 'scheduled');
   const activeLiveSurveys = liveSurveys.filter(s => s.status === 'live');
 
+  // 모든 review 설문이 개별 검수 완료되었는지 확인
+  const allReviewSurveysCompleted = reviewSurveys.length > 0 &&
+    reviewSurveys.every(survey => surveyReviewCompleted[survey.id]);
+
   // 검색 함수
   const handleSearch = () => {
     setSearchQuery(searchInput);
@@ -629,7 +633,10 @@ export default function OrderManagement() {
   };
 
   // 전체 설문 목록
-  const allSurveys = [...pendingSurveys, ...reviewSurveys, ...scheduledSurveys, ...activeLiveSurveys, ...closedSurveys, ...rejectedSurveys];
+  const allSurveysRaw = [...pendingSurveys, ...reviewSurveys, ...scheduledSurveys, ...activeLiveSurveys, ...closedSurveys, ...rejectedSurveys];
+  const allSurveys = allSurveysRaw.filter((survey, index, self) =>
+    index === self.findIndex(s => s.id === survey.id)
+  );
 
   // 현재 탭에 따른 설문 목록
   const getBaseSurveys = () => {
@@ -807,7 +814,7 @@ export default function OrderManagement() {
           )}
 
           <div className="max-w-4xl w-full">
-            <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div className="bg-white rounded-2xl shadow-2xl max-h-[85vh] overflow-y-auto scrollbar-hide">
               <img
                 src={currentImage.url}
                 alt={`이미지 ${currentImageIndex + 1}`}
@@ -914,11 +921,11 @@ export default function OrderManagement() {
         <div className="flex gap-2 w-full">
           <Button
             onClick={handleBulkReview}
-            disabled={downloadJsonMutation.isPending || reviewCompleted}
-            className={`flex-1 min-w-0 ${reviewCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-500 to-pink-500'} text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col`}
+            disabled={downloadJsonMutation.isPending || reviewCompleted || allReviewSurveysCompleted}
+            className={`flex-1 min-w-0 ${(reviewCompleted || allReviewSurveysCompleted) ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-500 to-pink-500'} text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col`}
           >
             <FileSpreadsheet className="w-4 h-4 mb-1 flex-shrink-0" />
-            <span>{downloadJsonMutation.isPending ? '처리 중...' : reviewCompleted ? <>검수 완료됨</> : <>설문 일괄<br />검수하기</>}</span>
+            <span>{downloadJsonMutation.isPending ? '처리 중...' : (reviewCompleted || allReviewSurveysCompleted) ? <>검수 완료됨</> : <>설문 일괄<br />검수하기</>}</span>
           </Button>
           <Button
             onClick={() => {
@@ -926,8 +933,8 @@ export default function OrderManagement() {
                 startAllReviewMutation.mutate();
               }
             }}
-            disabled={startAllReviewMutation.isPending || !reviewCompleted}
-            className={`flex-1 min-w-0 ${!reviewCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-blue-500 to-indigo-500'} text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col`}
+            disabled={startAllReviewMutation.isPending || !(reviewCompleted || allReviewSurveysCompleted)}
+            className={`flex-1 min-w-0 ${!(reviewCompleted || allReviewSurveysCompleted) ? 'bg-gray-400' : 'bg-gradient-to-r from-blue-500 to-indigo-500'} text-white shadow-lg rounded-xl py-2 h-auto text-center flex-col`}
           >
             <CheckCircle className="w-4 h-4 mb-1 flex-shrink-0" />
             <span>{startAllReviewMutation.isPending ? '예약 중...' : <>설문 일괄<br />예약하기</>}</span>
@@ -1017,11 +1024,10 @@ export default function OrderManagement() {
                       }}
                       disabled={confirmPaymentMutation.isPending || survey.payment_status === 'paid'}
                       size="sm"
-                      className={`text-xs h-6 px-3 rounded-lg ${
-                        survey.payment_status === 'paid'
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-green-500 hover:bg-green-600 text-white'
-                      }`}
+                      className={`text-xs h-6 px-3 rounded-lg ${survey.payment_status === 'paid'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
                     >
                       {survey.payment_status === 'paid' ? '입금 완료' : '입금 확인'}
                     </Button>

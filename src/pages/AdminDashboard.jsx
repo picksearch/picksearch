@@ -135,7 +135,7 @@ export default function AdminDashboard() {
       const questions = await Question.filter({ survey_id: surveyId }, 'order');
       setSurveyQuestions(prev => ({ ...prev, [surveyId]: questions }));
     } catch (error) {
-      console.error('Failed to load questions:', error);
+      // 질문 로딩 실패 시 무시
     }
   };
 

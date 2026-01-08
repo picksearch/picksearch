@@ -238,7 +238,7 @@ export default function CreateSurvey() {
         setLandingPageUrl(data.landing_page_url || "");
 
         localStorage.removeItem('copied_survey');
-        setCurrentStep(0);
+        setCurrentStep(1);
         setTimeout(() => {
           alert('📋 설문이 복사되었습니다!');
         }, 500);
@@ -517,6 +517,23 @@ export default function CreateSurvey() {
   const handleImageUpload = async (questionId, file) => {
     if (!file) return;
 
+    // 이미지 파일 형식 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      alert('이미지 파일만 업로드 가능합니다.\n(허용 형식: JPG, JPEG, PNG, GIF, WEBP)');
+      return;
+    }
+
+    // 5MB 용량 제한
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('이미지 용량은 5MB 이하만 가능합니다.');
+      return;
+    }
+
     setUploadingImages((prev) => ({ ...prev, [questionId]: true }));
 
     try {
@@ -658,6 +675,7 @@ export default function CreateSurvey() {
           options: q.options || [],
           image_urls: q.image_urls || [],
           image_descriptions: q.image_descriptions || [],
+          max_selections: q.max_selections,
           order: i
         });
       }
@@ -709,6 +727,7 @@ export default function CreateSurvey() {
           status: 'draft',
           survey_type: 'paid',
           landing_enabled: useLandingPage,
+          landing_page_url: landingPageUrl || null,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           total_cost: totalCost,
@@ -735,6 +754,7 @@ export default function CreateSurvey() {
           status: 'draft',
           payment_status: 'unpaid',
           landing_enabled: useLandingPage,
+          landing_page_url: landingPageUrl || null,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           total_cost: totalCost,
@@ -769,6 +789,7 @@ export default function CreateSurvey() {
           options: finalOptions,
           image_urls: q.image_urls || [],
           image_descriptions: q.image_descriptions || [],
+          max_selections: q.max_selections,
           order: i
         });
       }
@@ -1327,8 +1348,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                         }]);
                       }}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${isSelected ?
-                          'bg-blue-500 border-blue-500 text-white shadow-md' :
-                          'bg-white border-gray-200 text-gray-600 hover:bg-blue-50'}`
+                        'bg-blue-500 border-blue-500 text-white shadow-md' :
+                        'bg-white border-gray-200 text-gray-600 hover:bg-blue-50'}`
                       }>
 
                       {gender}
@@ -1381,8 +1402,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                           }]);
                         }}
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${isSelected ?
-                            'bg-blue-500 border-blue-500 text-white shadow-md' :
-                            'bg-white border-gray-200 text-gray-600 hover:bg-blue-50'}`
+                          'bg-blue-500 border-blue-500 text-white shadow-md' :
+                          'bg-white border-gray-200 text-gray-600 hover:bg-blue-50'}`
                         }>
 
                         {age.label}
@@ -1456,10 +1477,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
               {(() => {
                 const isDisabled = enableAppTargets || enableLocationTargets;
                 return (
-                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                    isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
                     enableAdditionalTargets ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer' :
-                    'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
+                      'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
                   }>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableAdditionalTargets && !isDisabled ? 'bg-blue-100' : 'bg-gray-200'}`}>
@@ -1592,10 +1612,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
               {(() => {
                 const isDisabled = enableAdditionalTargets || enableLocationTargets;
                 return (
-                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                    isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
                     enableAppTargets ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer' :
-                    'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
+                      'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
                   }>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableAppTargets && !isDisabled ? 'bg-blue-100' : 'bg-gray-200'}`}>
@@ -1674,10 +1693,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
               {(() => {
                 const isDisabled = enableAdditionalTargets || enableAppTargets;
                 return (
-                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                    isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
+                  <label className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isDisabled ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50' :
                     enableLocationTargets ? 'bg-blue-50 border-blue-200 hover:bg-blue-100 cursor-pointer' :
-                    'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
+                      'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'}`
                   }>
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enableLocationTargets && !isDisabled ? 'bg-blue-100' : 'bg-gray-200'}`}>
@@ -1871,8 +1889,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
 
                       <Card
                         className={`bg-white rounded-2xl shadow-sm transition-all cursor-pointer ${isHighlighted ?
-                            'border-2 border-blue-400 shadow-lg shadow-blue-100 ring-2 ring-blue-100' :
-                            'border border-gray-100'}`
+                          'border-2 border-blue-400 shadow-lg shadow-blue-100 ring-2 ring-blue-100' :
+                          'border border-gray-100'}`
                         }
                         onClick={() => setHighlightedQuestionId(null)}>
 
@@ -1973,10 +1991,10 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                       const value = parseInt(e.target.value) || null;
                                       updateQuestion(question.id, { ...question, max_selections: value });
                                     }}
-                                    placeholder="예: 3 (미입력시 제한없음)"
-                                    className="border-gray-200 rounded-xl h-10" />
+                                    placeholder="예: 3 (미입력시 전체)"
+                                    className={`rounded-xl h-10 ${question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) ? 'border-red-500' : 'border-gray-200'}`} />
                                   {question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) &&
-                                    <p className="text-xs text-red-500 mt-1">올바른 값을 입력해주세요.</p>
+                                    <p className="text-xs text-red-500">2 이상, 선택지 개수({question.options.length}개) 이하로 입력해주세요</p>
                                   }
                                 </div>
                               </>
@@ -2000,9 +2018,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                       updateQuestion(question.id, { ...question, max_selections: value });
                                     }}
                                     placeholder="예: 3 (미입력시 전체)"
-                                    className="border-gray-200 rounded-xl h-10" />
+                                    className={`rounded-xl h-10 ${question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) ? 'border-red-500' : 'border-gray-200'}`} />
                                   {question.max_selections && (question.max_selections < 2 || question.max_selections > question.options.length) &&
-                                    <p className="text-xs text-red-500 mt-1">올바른 값을 입력해주세요.</p>
+                                    <p className="text-xs text-red-500">2 이상, 선택지 개수({question.options.length}개) 이하로 입력해주세요</p>
                                   }
                                 </div>
                               </>
@@ -2100,11 +2118,12 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
 
                         {question.question_type === 'image_choice' &&
                           <CardContent className="pt-0 space-y-3">
+                            <p className="text-xs text-purple-600 font-medium">※ 이미지 용량: 최대 5MB</p>
                             <div className="space-y-2">
                               {question.image_urls.map((url, imgIndex) =>
                                 <div key={imgIndex} className="space-y-2">
-                                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200">
-                                    <img src={url} alt={`이미지 ${imgIndex + 1}`} className="w-full h-full object-cover" />
+                                  <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
+                                    <img src={url} alt={`이미지 ${imgIndex + 1}`} className="max-w-full max-h-full object-contain" />
                                     <button
                                       onClick={() => removeImage(question.id, imgIndex)}
                                       className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 shadow-lg">
@@ -2125,7 +2144,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                               )}
 
                               {question.image_urls.length < 2 &&
-                                <label className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-purple-300 cursor-pointer flex flex-col items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 transition-all">
+                                <label className="w-full aspect-square rounded-xl border-2 border-dashed border-purple-300 cursor-pointer flex flex-col items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 transition-all">
                                   <input
                                     type="file"
                                     accept="image/*"
@@ -2139,6 +2158,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                     <>
                                       <Upload className="w-10 h-10 text-purple-500" />
                                       <span className="text-base text-purple-600 font-medium">이미지 업로드 ({question.image_urls.length}/2)</span>
+                                      <span className="text-xs text-purple-400">최대 5MB</span>
                                     </>
                                   }
                                 </label>
@@ -2151,12 +2171,12 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                           <CardContent className="pt-0 space-y-3">
                             <div className="bg-pink-50 rounded-lg p-2 mb-2 border border-pink-200">
                               <p className="text-xs text-pink-700 font-medium">
-                                📢 이벤트/홍보용 1:1 이미지
+                                📢 이벤트/홍보용 1:1 이미지 (최대 5MB)
                               </p>
                             </div>
                             {question.image_urls.length > 0 ?
-                              <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200">
-                                <img src={question.image_urls[0]} alt="배너" className="w-full h-full object-cover" />
+                              <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
+                                <img src={question.image_urls[0]} alt="배너" className="max-w-full max-h-full object-contain" />
                                 <button
                                   onClick={() => removeImage(question.id, 0)}
                                   className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600">
@@ -2178,6 +2198,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                   <>
                                     <Upload className="w-10 h-10 text-pink-500" />
                                     <span className="text-base text-pink-600 font-medium">이미지 업로드</span>
+                                    <span className="text-xs text-pink-400">최대 5MB</span>
                                   </>
                                 }
                               </label>
@@ -2292,7 +2313,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
               </div>
             </CardContent>
           </Card>
-        </div>);
+        </div >);
 
     }
 
@@ -2593,8 +2614,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
               onClick={handleNext}
               disabled={currentStep === 6 && !canProceedFromStep6}
               className={`flex-[2] h-14 text-base rounded-xl font-bold ${currentStep === 6 && !canProceedFromStep6 ?
-                  'bg-gray-300 text-gray-500 cursor-not-allowed' :
-                  'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'}`
+                'bg-gray-300 text-gray-500 cursor-not-allowed' :
+                'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'}`
               }>
               다음
               <ArrowRight className="w-5 h-5 ml-2" />

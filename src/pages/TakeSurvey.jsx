@@ -638,7 +638,7 @@ export default function TakeSurvey() {
 
   const handleMultipleSelectToggle = (option) => {
     const maxSelections = currentQuestion.max_selections ? parseInt(currentQuestion.max_selections) : null;
-    
+
     if (selectedMultiple.includes(option)) {
       setSelectedMultiple(selectedMultiple.filter(o => o !== option));
     } else {
@@ -1563,9 +1563,9 @@ export default function TakeSurvey() {
                         <button
                           key={index}
                           onClick={() => handleImageChoiceAnswer(currentQuestion.id, imageUrl, index)}
-                          className={`w-full aspect-[4/3] rounded-2xl overflow-hidden border-4 transition-all shadow-lg relative hover:scale-[1.02] active:scale-95 hover:shadow-2xl cursor-pointer ${
-                            selectedImageIndex === index 
-                              ? 'border-purple-500 ring-4 ring-purple-200' 
+                          className={`w-full aspect-square rounded-2xl overflow-hidden border-4 transition-all shadow-lg relative hover:scale-[1.02] active:scale-95 hover:shadow-2xl cursor-pointer bg-gray-50 ${
+                            selectedImageIndex === index
+                              ? 'border-purple-500 ring-4 ring-purple-200'
                               : 'border-transparent hover:border-purple-500'
                           }`}
                         >
@@ -1574,10 +1574,10 @@ export default function TakeSurvey() {
                               <div className="w-10 h-10 border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
                             </div>
                           )}
-                          <img 
+                          <img
                             src={getOptimizedImageUrl(imageUrl)}
                             alt={`선택지 ${index + 1}`}
-                            className={`w-full h-full object-cover transition-opacity duration-500 ${
+                            className={`w-full h-full object-contain transition-opacity duration-500 ${
                               isLoaded ? 'opacity-100' : 'opacity-0'
                             }`}
                             onLoad={() => setLoadedImages(prev => new Set([...prev, imageUrl]))}

@@ -179,6 +179,8 @@ function PagesContent() {
                 <Route path="/PicketingIntegration" element={<PicketingIntegration />} />
                 
                 <Route path="/PrivacyPolicy" element={<PrivacyPolicy />} />
+
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 
                 <Route path="/Support" element={<Support />} />
                 
@@ -191,6 +193,8 @@ function PagesContent() {
                 <Route path="/TargetSettings" element={<TargetSettings />} />
                 
                 <Route path="/TermsOfService" element={<TermsOfService />} />
+
+                <Route path="/terms" element={<TermsOfService />} />
                 
                 <Route path="/UseCases" element={<UseCases />} />
                     </Routes>

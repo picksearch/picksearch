@@ -34,8 +34,6 @@ export const Survey = {
       updated_at: new Date().toISOString()
     };
 
-    console.log('Creating survey with data:', surveyData);
-
     const { data: survey, error } = await supabase
       .from('surveys')
       .insert(surveyData)
@@ -43,11 +41,9 @@ export const Survey = {
       .single();
 
     if (error) {
-      console.error('Survey create error:', error);
       throw error;
     }
 
-    console.log('Survey created:', survey);
     return survey;
   },
 

@@ -23,6 +23,7 @@ export default function PaymentPage() {
   const [companyName, setCompanyName] = useState("");
   const [ceoName, setCeoName] = useState("");
   const [taxEmail, setTaxEmail] = useState("");
+  const [taxEmailError, setTaxEmailError] = useState("");
   const [businessType, setBusinessType] = useState("");
   const [businessItem, setBusinessItem] = useState("");
   const [copied, setCopied] = useState(false);
@@ -123,6 +124,11 @@ export default function PaymentPage() {
       if (proofType === 'tax_invoice') {
         if (!companyName.trim() || !ceoName.trim() || !proofIdentifier.trim() || !taxEmail.trim() || !businessType.trim() || !businessItem.trim()) {
           throw new Error('세금계산서 정보를 모두 입력해주세요.');
+        }
+        // 이메일 형식 검증
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(taxEmail.trim())) {
+          throw new Error('올바른 이메일 형식을 입력해주세요. (예: tax@company.com)');
         }
       }
 
@@ -382,11 +388,20 @@ export default function PaymentPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">수신 이메일</label>
                   <Input
+                    type="email"
                     value={taxEmail}
-                    onChange={(e) => setTaxEmail(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setTaxEmail(value);
+                      if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+                        setTaxEmailError('올바른 이메일 형식을 입력해주세요.');
+                      } else {
+                        setTaxEmailError('');
+                      }
+                    }}
                     placeholder="tax@company.com"
-                    className="h-12 rounded-xl border-gray-200" />
-
+                    className={`h-12 rounded-xl ${taxEmailError ? 'border-red-500' : 'border-gray-200'}`} />
+                  {taxEmailError && <p className="text-xs text-red-500">{taxEmailError}</p>}
                 </div>
               </div>
             }

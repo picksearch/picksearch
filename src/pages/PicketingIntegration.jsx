@@ -80,8 +80,8 @@ export default function PicketingIntegration() {
             <div className="relative">
               <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
 {`# 픽서치 API 설정
-VITE_PICKSEARCH_API_URL=https://survey-flow-6a9c9752.base44.app/api/apps/690ca08f00a852116a9c9752/functions/externalSurveyAPI
-VITE_PICKSEARCH_API_KEY=6c23969f3cf34da888f2e9cf591d7d3e`}
+VITE_PICKSEARCH_API_URL=<픽서치에서 발급받은 API URL>
+VITE_PICKSEARCH_API_KEY=<픽서치에서 발급받은 API KEY>`}
               </pre>
               <Button
                 size="sm"

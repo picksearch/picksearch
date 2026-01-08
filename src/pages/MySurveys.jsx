@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, BarChart3, Users, Clock, CheckCircle, AlertCircle, ExternalLink, Target, FolderPlus, Folder, Edit2, Trash2, X, Copy, ChevronDown, Search, MoreHorizontal } from "lucide-react";
+import { PlusCircle, BarChart3, Users, Clock, CheckCircle, AlertCircle, ExternalLink, Target, FolderPlus, Folder, Edit2, Trash2, X, Copy, ChevronDown, Search, MoreHorizontal, Eye, CheckSquare, CircleDot, Type, Image, List } from "lucide-react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -43,6 +43,11 @@ export default function MySurveys() {
     target_participants: 0,
     total_cost: 0
   });
+
+  // 설문 미리보기 모달 state
+  const [previewSurvey, setPreviewSurvey] = useState(null);
+  const [previewQuestions, setPreviewQuestions] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const { data: user, isLoading: userLoading, error: userError } = useQuery({
     queryKey: ['currentUser'],
@@ -173,6 +178,51 @@ export default function MySurveys() {
       target_participants: survey.target_participants,
       total_cost: survey.total_cost
     });
+  };
+
+  // 설문 미리보기 모달 열기
+  const openPreviewModal = async (survey) => {
+    setPreviewSurvey(survey);
+    setPreviewLoading(true);
+    try {
+      const questions = await Question.filter({ survey_id: survey.id }, 'order');
+      setPreviewQuestions(questions);
+    } catch (error) {
+      setPreviewQuestions([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closePreviewModal = () => {
+    setPreviewSurvey(null);
+    setPreviewQuestions([]);
+  };
+
+  // 질문 타입 아이콘 및 라벨
+  const getQuestionTypeInfo = (type) => {
+    switch (type) {
+      case 'multiple_choice':
+        return { icon: CircleDot, label: '객관식', color: 'text-blue-500' };
+      case 'choice_with_other':
+        return { icon: CircleDot, label: '객관+주관', color: 'text-cyan-500' };
+      case 'multiple_select':
+        return { icon: CheckSquare, label: '다중선택', color: 'text-violet-500' };
+      case 'ranking':
+        return { icon: List, label: '순위형', color: 'text-amber-500' };
+      case 'short_answer':
+        return { icon: Type, label: '주관식', color: 'text-green-500' };
+      case 'numeric_rating':
+        return { icon: List, label: '수치평정', color: 'text-teal-500' };
+      case 'likert_scale':
+        return { icon: List, label: '리커트 척도', color: 'text-blue-500' };
+      case 'image_choice':
+        return { icon: Image, label: '이미지 선택', color: 'text-purple-500' };
+      case 'image_banner':
+        return { icon: Image, label: '이벤트', color: 'text-pink-500' };
+      default:
+        return { icon: List, label: type || '알수없음', color: 'text-gray-500' };
+    }
   };
 
   const deleteSurveyMutation = useMutation({
@@ -534,6 +584,204 @@ export default function MySurveys() {
           </div>
         }
 
+        {/* Survey Preview Modal */}
+        {previewSurvey &&
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 pb-24" onClick={closePreviewModal}>
+            <div
+              className="bg-white rounded-2xl w-full max-w-lg max-h-[75vh] shadow-xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="p-5 border-b border-gray-100 flex-shrink-0">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 pr-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Eye className="w-5 h-5 text-blue-500" />
+                      <span className="text-sm font-bold text-blue-500">설문 미리보기</span>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 leading-tight">
+                      {previewSurvey.title}
+                    </h2>
+                    {previewSurvey.description && (
+                      <p className="text-sm text-gray-500 mt-1">{previewSurvey.description}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={closePreviewModal}
+                    className="rounded-full hover:bg-gray-100 -mt-1 -mr-1"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Modal Content - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {previewLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : previewQuestions.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <List className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>등록된 질문이 없습니다</p>
+                  </div>
+                ) : (
+                  previewQuestions.map((question, index) => {
+                    const typeInfo = getQuestionTypeInfo(question.question_type);
+                    const TypeIcon = typeInfo.icon;
+
+                    return (
+                      <div
+                        key={question.id}
+                        className="bg-gray-50 rounded-xl p-4 border border-gray-100"
+                      >
+                        {/* Question Header */}
+                        <div className={`flex items-start gap-3 ${question.question_type === 'image_banner' ? 'mb-2' : 'mb-3'}`}>
+                          <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            {question.question_type !== 'image_banner' && (
+                              <p className="font-bold text-gray-900 leading-snug">
+                                {question.question_text}
+                              </p>
+                            )}
+                            <div className={`flex items-center gap-1.5 ${question.question_type !== 'image_banner' ? 'mt-1.5' : ''}`}>
+                              <TypeIcon className={`w-3.5 h-3.5 ${typeInfo.color}`} />
+                              <span className={`text-xs font-medium ${typeInfo.color}`}>
+                                {typeInfo.label}
+                              </span>
+                              {question.max_selections && (
+                                <span className="text-xs text-gray-400 ml-1">
+                                  (최대 {question.max_selections}개 선택)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Options - 객관식, 객관+주관, 다중선택, 순위형 */}
+                        {['multiple_choice', 'choice_with_other', 'multiple_select', 'ranking'].includes(question.question_type) && question.options?.length > 0 && (
+                          <div className="ml-10 space-y-2">
+                            {question.options.map((option, optIdx) => (
+                              <div
+                                key={optIdx}
+                                className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-lg border border-gray-200"
+                              >
+                                {question.question_type === 'multiple_choice' || question.question_type === 'choice_with_other' ? (
+                                  <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                                ) : question.question_type === 'ranking' ? (
+                                  <div className="w-5 h-5 rounded bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">
+                                    {optIdx + 1}
+                                  </div>
+                                ) : (
+                                  <div className="w-4 h-4 rounded border-2 border-gray-300" />
+                                )}
+                                <span className="text-sm text-gray-700">{option}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 리커트 척도 */}
+                        {question.question_type === 'likert_scale' && (
+                          <div className="ml-10 flex gap-2">
+                            {[1, 2, 3, 4, 5].map((val) => (
+                              <div
+                                key={val}
+                                className="w-10 h-10 rounded-lg border-2 border-gray-200 bg-white flex items-center justify-center text-sm font-medium text-gray-500"
+                              >
+                                {val}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 수치평정 */}
+                        {question.question_type === 'numeric_rating' && (
+                          <div className="ml-10">
+                            <div className="h-2 bg-gradient-to-r from-gray-200 via-blue-300 to-blue-500 rounded-full" />
+                            <div className="flex justify-between mt-1 text-xs text-gray-400">
+                              <span>0</span>
+                              <span>100</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Image Options - 이미지 선택 */}
+                        {question.question_type === 'image_choice' && question.image_urls?.length > 0 && (
+                          <div className="ml-10 grid grid-cols-2 gap-2">
+                            {question.image_urls.map((url, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                              >
+                                <div className="aspect-square flex items-center justify-center">
+                                  <img
+                                    src={url}
+                                    alt={question.image_descriptions?.[imgIdx] || `옵션 ${imgIdx + 1}`}
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                </div>
+                                {question.image_descriptions?.[imgIdx] && (
+                                  <div className="px-2 py-1.5 text-xs text-gray-600 bg-gray-50 truncate">
+                                    {question.image_descriptions[imgIdx]}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 이미지 배너 */}
+                        {question.question_type === 'image_banner' && question.image_urls?.length > 0 && (
+                          <div className="ml-10 space-y-2">
+                            <img
+                              src={question.image_urls[0]}
+                              alt="이벤트 배너"
+                              className="w-full rounded-lg border border-gray-200"
+                            />
+                            {question.question_text && (
+                              <p className="text-sm text-gray-700 font-medium px-1">{question.question_text}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Text Input Placeholder - 주관식 */}
+                        {question.question_type === 'short_answer' && (
+                          <div className="ml-10">
+                            <div className="px-3 py-2.5 bg-white rounded-lg border border-gray-200 text-sm text-gray-400">
+                              응답자가 직접 입력합니다
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-gray-100 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">
+                    총 <span className="font-bold text-gray-700">{previewQuestions.length}</span>개 질문
+                  </span>
+                  <Button
+                    onClick={closePreviewModal}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl"
+                  >
+                    닫기
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
         {/* Filters & Search Area */}
         <div className="space-y-3">
           {/* Search & Filter Row */}
@@ -724,7 +972,10 @@ export default function MySurveys() {
                     transition={{ delay: index * 0.05 }}
                     className="group">
 
-                    <div className="bg-white rounded-[24px] shadow-[0_2px_12px_-2px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 relative">
+                    <div
+                      className="bg-white rounded-[24px] shadow-[0_2px_12px_-2px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 relative cursor-pointer"
+                      onClick={() => openPreviewModal(survey)}
+                    >
                       <div className={`h-1.5 w-full ${survey.status === 'live' ? 'bg-green-500' :
                         survey.status === 'draft' ? 'bg-gray-300' :
                           survey.status === 'closed' ? 'bg-blue-500' : 'bg-orange-400'}`
@@ -767,7 +1018,7 @@ export default function MySurveys() {
                         </div>
 
                         {/* Integrated Menu */}
-                        <div className="absolute top-6 right-6">
+                        <div className="absolute top-6 right-6" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full">
@@ -872,7 +1123,7 @@ export default function MySurveys() {
                         }
 
                         {/* Actions Footer */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           {survey.status === 'draft' &&
                             <Link to={survey.survey_type === 'free' ? `${createPageUrl('CreateFreeSurvey')}?draft=${survey.id}` : `${createPageUrl('CreateSurvey')}?draft=${survey.id}`} className="w-full">
                               <Button className={`w-full ${survey.survey_type === 'free' ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-100' : 'bg-[#3182F6] hover:bg-[#1B64DA] shadow-blue-100'} text-white rounded-xl h-11 font-bold shadow-lg transition-all active:scale-[0.98]`}>

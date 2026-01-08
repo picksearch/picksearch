@@ -54,9 +54,14 @@ export default function Login() {
   useEffect(() => {
     // Check if already logged in
     const checkAuth = async () => {
-      const isAuth = await auth.isAuthenticated();
-      if (isAuth) {
-        navigate(redirectTo);
+      try {
+        const isAuth = await auth.isAuthenticated();
+        if (isAuth) {
+          navigate(redirectTo);
+        }
+      } catch (err) {
+        // Ignore CORB/network errors during auth check
+        console.log('Auth check skipped:', err.message);
       }
     };
     checkAuth();

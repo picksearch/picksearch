@@ -17,7 +17,24 @@ import { SAMPLE_SURVEY, SAMPLE_QUESTIONS, SAMPLE_RESPONSES, SAMPLE_AI_REPORT } f
 import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
 
-const COLORS = ['#3182F6', '#0EA5E9', '#8B5CF6', '#F59E0B', '#10B981'];
+// 도넛 차트용 색상 - 인접 색상이 확연히 다르도록 배열
+const COLORS = [
+  '#3182F6', // 파랑
+  '#F97316', // 주황
+  '#10B981', // 초록
+  '#EF4444', // 빨강
+  '#8B5CF6', // 보라
+  '#F59E0B', // 노랑
+  '#EC4899', // 핑크
+  '#06B6D4', // 시안
+  '#84CC16', // 라임
+  '#6366F1', // 인디고
+  '#14B8A6', // 틸
+  '#F43F5E', // 로즈
+  '#A855F7', // 퍼플
+  '#22C55E', // 에메랄드
+  '#0EA5E9', // 스카이
+];
 
 export default function SurveyResults() {
   const navigate = useNavigate();
@@ -921,11 +938,11 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit text-xs">
               {type === 'multiple_choice' ? '객관식' :
               type === 'multiple_select' ? '다중선택형' :
               type === 'image_choice' ? '이미지선택' :
@@ -949,19 +966,19 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
             <Badge className="bg-amber-100 text-amber-700 border-0 w-fit text-xs">주관식</Badge>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 max-h-64 overflow-y-auto">
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 max-h-64 overflow-y-auto">
               <div className="space-y-2">
                 {data.text_responses && data.text_responses.map((response, idx) =>
-                <div key={idx} className="bg-white rounded-lg p-3 border border-amber-100">
+                <div key={idx} className="bg-white rounded-lg p-3 border border-blue-100">
                     <div className="flex items-start gap-2">
-                      <Badge className="bg-amber-500 text-white border-0 text-xs flex-shrink-0">
+                      <Badge className="bg-blue-500 text-white border-0 text-xs flex-shrink-0">
                         #{idx + 1}
                       </Badge>
                       <p className="text-sm text-gray-700 flex-1">{response}</p>
@@ -971,7 +988,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               </div>
             </div>
 
-            <div className="bg-amber-50 rounded-xl p-3 text-sm text-gray-700">
+            <div className="bg-blue-50 rounded-xl p-3 text-sm text-gray-700">
               💡 {insight}
             </div>
 
@@ -995,32 +1012,38 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
             <Badge className="bg-blue-100 text-blue-700 border-0 w-fit text-xs">객관식</Badge>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={65} // 라벨 공간 확보를 위해 사이즈 축소
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={renderLabel}
-                  labelLine={false}>
+            {chartData && chartData.length > 0 && chartData.some(d => d.value > 0) ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={65}
+                    paddingAngle={2}
+                    dataKey="value"
+                    label={renderLabel}
+                    labelLine={false}>
 
-                  {chartData.map((entry, index) =>
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  )}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+                    {chartData.map((entry, index) =>
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    )}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
+                응답 데이터가 없습니다
+              </div>
+            )}
 
             <div className="text-center text-sm text-gray-700">
               <span className="font-bold" style={{ color: COLORS[chartData.indexOf(maxItem) % COLORS.length] }}>
@@ -1063,7 +1086,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
@@ -1087,7 +1110,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               </div>
             )}
 
-            <div className="bg-violet-50 rounded-xl p-3 text-sm text-gray-700 mt-4">
+            <div className="bg-blue-50 rounded-xl p-3 text-sm text-gray-700 mt-4">
               💡 {insight}
             </div>
 
@@ -1112,7 +1135,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
@@ -1130,7 +1153,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                   <div key={idx} className="flex items-start gap-4">
                     {/* 이미지 */}
                     <div
-                      className={`rounded-2xl overflow-hidden flex-shrink-0 ${isMaxPercentage ? 'border-4 border-pink-500' : 'border-2 border-gray-200'}`}
+                      className={`rounded-2xl overflow-hidden flex-shrink-0 ${isMaxPercentage ? 'border-4 border-blue-500' : 'border-2 border-gray-200'}`}
                       style={{
                         width: `${imageSize}px`,
                         height: `${imageSize}px`
@@ -1162,7 +1185,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">{label}</span>
-                        <Badge className="bg-purple-500 text-white border-0">
+                        <Badge className="bg-blue-500 text-white border-0">
                           {percentage.toFixed(1)}% ({data.values?.[idx] || 0}명)
                         </Badge>
                       </div>
@@ -1171,7 +1194,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                           className="h-2 rounded-full transition-all"
                           style={{
                             width: `${percentage}%`,
-                            background: 'linear-gradient(to right, #EC4899, #F472B6)'
+                            background: 'linear-gradient(to right, #3B82F6, #60A5FA)'
                           }} />
 
                       </div>
@@ -1184,7 +1207,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
             {/* 인사이트 텍스트 */}
             <div className="text-sm text-gray-700 leading-relaxed">
               소비자들은{' '}
-              <span className="font-bold text-pink-600">
+              <span className="font-bold text-blue-600">
                 {data.labels?.[maxIndex]}({maxPercentage.toFixed(1)}%)
               </span>
               을 선택지{' '}
@@ -1194,7 +1217,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               보다 더 많이 선호하는 것으로 나타났습니다.
             </div>
 
-            <div className="bg-purple-50 rounded-xl p-3 text-sm text-gray-700">
+            <div className="bg-blue-50 rounded-xl p-3 text-sm text-gray-700">
               💡 {insight}
             </div>
 
@@ -1223,16 +1246,16 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       };
 
       const getRankColor = (position) => {
-        if (position === 0) return 'from-yellow-400 to-orange-500';
-        if (position === 1) return 'from-gray-300 to-gray-400';
-        if (position === 2) return 'from-orange-400 to-orange-500';
+        if (position === 0) return 'from-blue-500 to-blue-600';
+        if (position === 1) return 'from-blue-300 to-blue-400';
+        if (position === 2) return 'from-blue-200 to-blue-300';
         return 'from-gray-200 to-gray-300';
       };
 
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
@@ -1256,7 +1279,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={`${position < 3 ? 'bg-white/30 text-white' : 'bg-amber-500 text-white'} border-0 text-xs`}>
+                      <Badge className={`${position < 3 ? 'bg-white/30 text-white' : 'bg-blue-500 text-white'} border-0 text-xs`}>
                         평균 {item.rank.toFixed(1)}위
                       </Badge>
                       <span className={`text-xs ${position < 3 ? 'text-white/80' : 'text-gray-500'}`}>
@@ -1268,7 +1291,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               </div>
             )}
 
-            <div className="bg-amber-50 rounded-xl p-3 text-sm text-gray-700 mt-4">
+            <div className="bg-blue-50 rounded-xl p-3 text-sm text-gray-700 mt-4">
               💡 {insight}
             </div>
 
@@ -1287,7 +1310,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
@@ -1307,7 +1330,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                     className="w-full rounded-t-lg absolute bottom-0 transition-all"
                     style={{
                       height: `${value / maxValue * 100}%`,
-                      background: 'linear-gradient(to top, #EC4899, #F472B6)'
+                      background: 'linear-gradient(to top, #3B82F6, #60A5FA)'
                     }} />
 
                   }
@@ -1317,7 +1340,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               )}
             </div>
 
-            <div className="bg-teal-50 rounded-xl p-3 text-sm text-gray-700">
+            <div className="bg-blue-50 rounded-xl p-3 text-sm text-gray-700">
               💡 {insight}
             </div>
 
@@ -1384,7 +1407,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
         analysisText = `긍정 응답(${positiveSum.toFixed(1)}%)이 가장 높게 나타났습니다.`;
       } else if (negativeSum > positiveSum && negativeSum > neutralSum) {
         dominantSentiment = '부정적';
-        dominantColor = 'text-pink-600';
+        dominantColor = 'text-blue-400';
         analysisText = `부정 응답(${negativeSum.toFixed(1)}%)이 가장 높게 나타났습니다.`;
       } else {
         dominantSentiment = '중립적';
@@ -1395,7 +1418,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
       return (
         <Card className="bg-white rounded-2xl shadow-sm border-0">
           <CardHeader className="pb-3">
-            <Badge className="bg-purple-100 text-purple-700 border-0 w-fit mb-2 text-xs">
+            <Badge className="bg-blue-100 text-blue-700 border-0 w-fit mb-2 text-xs">
               Q{rootQuestions.findIndex((q) => q.id === question.qid) + 1}
             </Badge>
             <CardTitle className="text-base mb-2">{title}</CardTitle>
@@ -1408,35 +1431,41 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
             </div>
 
             {/* 막대 그래프 (BarChart) 추가 */}
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis hide />
-                  <Tooltip
-                    cursor={{ fill: 'transparent' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white p-2 border border-gray-100 shadow-lg rounded-lg text-xs">
-                            <p className="font-bold">{data.name}</p>
-                            <p>{data.value}명 ({data.percentage.toFixed(1)}%)</p>
-                          </div>);
+            {chartData && chartData.length > 0 && totalCount > 0 ? (
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis hide domain={[0, 'auto']} />
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white p-2 border border-gray-100 shadow-lg rounded-lg text-xs">
+                              <p className="font-bold">{data.name}</p>
+                              <p>{data.value}명 ({data.percentage.toFixed(1)}%)</p>
+                            </div>);
 
-                      }
-                      return null;
-                    }} />
+                        }
+                        return null;
+                      }} />
 
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) =>
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                    )}
-                    <LabelList dataKey="percentage" position="top" formatter={(val) => `${val.toFixed(1)}%`} style={{ fontSize: '11px', fill: '#666' }} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {chartData.map((entry, index) =>
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                      )}
+                      <LabelList dataKey="percentage" position="top" formatter={(val) => `${val?.toFixed(1) || 0}%`} style={{ fontSize: '11px', fill: '#666' }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
+                응답 데이터가 없습니다
+              </div>
+            )}
 
             {/* 연속된 바 그래프 (기존 유지 - 비율 한눈에 보기 좋음) */}
             <div className="w-full h-4 flex rounded-full overflow-hidden opacity-80">
@@ -1480,8 +1509,8 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               (긍정 {positiveSum.toFixed(1)}% vs 부정 {negativeSum.toFixed(1)}% vs 중립 {neutralSum.toFixed(1)}%)
             </div>
 
-            <div className="bg-indigo-50 rounded-xl p-4 text-sm text-gray-700">
-              <span className="font-bold text-indigo-800 block mb-1">💡 주요 인사이트</span>
+            <div className="bg-blue-50 rounded-xl p-4 text-sm text-gray-700">
+              <span className="font-bold text-blue-800 block mb-1">💡 주요 인사이트</span>
               {insight}
             </div>
 
@@ -1539,20 +1568,9 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               strokeLinejoin="round">
 
               <path d="M3 3v18h18" />
-              <motion.line
-                x1="18" y1="17" x2="18" y2="9"
-                animate={{ y2: [14, 6, 14] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
-
-              <motion.line
-                x1="13" y1="17" x2="13" y2="5"
-                animate={{ y2: [12, 4, 12] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} />
-
-              <motion.line
-                x1="8" y1="17" x2="8" y2="14"
-                animate={{ y2: [15, 8, 15] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+              <line x1="18" y1="17" x2="18" y2="9" />
+              <line x1="13" y1="17" x2="13" y2="5" />
+              <line x1="8" y1="17" x2="8" y2="14" />
 
             </svg>
           </div>
@@ -1620,7 +1638,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                     setShowCategoryManager(false);
                   }
                 }}
-                className="bg-purple-500 hover:bg-purple-600 rounded-xl h-10 w-10 p-0">
+                className="bg-blue-500 hover:bg-blue-600 rounded-xl h-10 w-10 p-0">
 
                     <FolderPlus className="w-4 h-4" />
                   </Button>
@@ -1633,8 +1651,8 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               {[
             { id: 'all', label: '전체', icon: '📂', count: surveys.length, color: 'bg-gray-50', activeColor: 'bg-white', borderColor: 'border-gray-200', activeBorder: 'border-blue-200' },
             { id: 'pending', label: '대기', icon: '⏳', count: statusCounts.pending, color: 'bg-blue-50', activeColor: 'bg-blue-50', borderColor: 'border-blue-100', activeBorder: 'border-blue-200' },
-            { id: 'active', label: '진행중', icon: '🔥', count: statusCounts.active, color: 'bg-orange-50', activeColor: 'bg-orange-50', borderColor: 'border-orange-100', activeBorder: 'border-orange-200' },
-            { id: 'closed', label: '종료', icon: '🏁', count: statusCounts.closed, color: 'bg-green-50', activeColor: 'bg-green-50', borderColor: 'border-green-100', activeBorder: 'border-green-200' }].
+            { id: 'active', label: '진행중', icon: '🔥', count: statusCounts.active, color: 'bg-blue-50', activeColor: 'bg-blue-50', borderColor: 'border-blue-100', activeBorder: 'border-blue-200' },
+            { id: 'closed', label: '종료', icon: '🏁', count: statusCounts.closed, color: 'bg-blue-50', activeColor: 'bg-blue-50', borderColor: 'border-blue-100', activeBorder: 'border-blue-200' }].
             map((item) => {
               const isActive = statusFilter === item.id;
               return (
@@ -1697,7 +1715,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               className={`
                         px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all border
                         ${categoryFilter === cat ?
-              'bg-indigo-500 text-white border-indigo-500 shadow-md transform -translate-y-0.5' :
+              'bg-blue-500 text-white border-blue-500 shadow-md transform -translate-y-0.5' :
               'bg-white text-gray-500 border-gray-100 hover:border-gray-300'}
                     `}>
 
@@ -1744,7 +1762,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           {survey.isSample &&
-                    <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 mb-2">
+                    <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 mb-2">
                               샘플 설문
                             </Badge>
                     }
@@ -1754,11 +1772,11 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                             <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
                               {survey.completed_responses || 0}명 응답
                             </Badge>
-                            <Badge className={`border-0 text-xs ${survey.status === 'live' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                            <Badge className={`border-0 text-xs ${survey.status === 'live' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
                               {survey.status === 'live' ? '진행중' : '종료'}
                             </Badge>
                             {survey.creator_name &&
-                      <Badge className="bg-indigo-50 text-indigo-600 border-0 text-xs">
+                      <Badge className="bg-blue-50 text-blue-600 border-0 text-xs">
                                 👤 {survey.creator_name}
                               </Badge>
                       }
@@ -1792,7 +1810,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-orange-400 to-pink-500 rounded-2xl p-4 shadow-lg text-white text-center mb-4">
+          className="bg-gradient-to-r from-blue-400 to-blue-500 rounded-2xl p-4 shadow-lg text-white text-center mb-4">
 
               <p className="text-sm font-bold flex items-center justify-center gap-2">
                 <span>📊</span> 이 설문은 픽서치 결과 분석 기능을 체험할 수 있는 샘플 설문입니다
@@ -1818,66 +1836,63 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
           </motion.button>
 
           <div className="flex justify-between items-center gap-2 px-1">
-            <motion.button
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handlePrintReport}
-            className="flex-1 bg-white text-gray-700 border border-gray-200 border-b-[4px] border-b-gray-300 rounded-xl h-12 text-sm font-bold transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px]">
+            {/* 초정밀 리포트 버튼 */}
+            {selectedSurvey.status === 'closed' && completedResponses.length > 0 && (
+              hyperReportData ?
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowHyperReport(true)}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 border-b-[4px] border-b-blue-700 rounded-xl h-12 text-sm font-medium transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px] shadow-lg">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="flex flex-col leading-tight text-center"><span>초정밀</span><span>리포트</span></span>
+                </motion.button> :
+                <motion.button
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={generateHyperPrecisionReport}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 border-b-[4px] border-b-blue-700 rounded-xl h-12 text-sm font-medium transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px] shadow-lg">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="flex flex-col leading-tight text-center"><span>초정밀</span><span>AI</span></span>
+                </motion.button>
+            )}
 
-              <FileText className="w-4 h-4 text-purple-500" />
+            {/* AI 분석 버튼 */}
+            {!aiReport && !selectedSurvey.isSample && selectedSurvey.status === 'closed' &&
+              <motion.button
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport || !structuredSurveyData}
+                className="flex-1 bg-white text-gray-700 border border-gray-200 border-b-[4px] border-b-gray-300 rounded-xl h-12 text-sm font-medium transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px] disabled:opacity-50 disabled:cursor-not-allowed">
+                {isGeneratingReport ?
+                  <><Loader2 className="w-4 h-4 animate-spin text-blue-500" /><span>생성중</span></> :
+                  <><Sparkles className="w-4 h-4 text-blue-500" /><span>AI 분석</span></>
+                }
+              </motion.button>
+            }
+
+            {/* PDF 버튼 */}
+            <motion.button
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handlePrintReport}
+              className="flex-1 bg-white text-gray-700 border border-gray-200 border-b-[4px] border-b-gray-300 rounded-xl h-12 text-sm font-medium transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px]">
+              <FileText className="w-4 h-4 text-blue-500" />
               <span>PDF</span>
             </motion.button>
 
-            {!aiReport && !selectedSurvey.isSample && selectedSurvey.status === 'closed' &&
-          <motion.button
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleGenerateReport}
-            disabled={isGeneratingReport || !structuredSurveyData}
-            className="flex-1 bg-white text-gray-700 border border-gray-200 border-b-[4px] border-b-gray-300 rounded-xl h-12 text-sm font-bold transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px] disabled:opacity-50 disabled:cursor-not-allowed">
-
-                {isGeneratingReport ?
-            <><Loader2 className="w-4 h-4 animate-spin text-pink-500" /><span>생성중</span></> :
-
-            <><Sparkles className="w-4 h-4 text-pink-500" /><span>AI 분석</span></>
-            }
-              </motion.button>
-          }
-
+            {/* 데이터 버튼 */}
             {selectedSurvey.status === 'closed' && completedResponses.length > 0 &&
-          <>
-                <motion.button
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleDownloadData}
-              className="flex-1 bg-white text-gray-700 border border-gray-200 border-b-[4px] border-b-gray-300 rounded-xl h-12 text-sm font-bold transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px]">
-
-                  <Download className="w-4 h-4 text-green-500" />
-                  <span>데이터</span>
-                </motion.button>
-                {hyperReportData ?
-            <motion.button
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowHyperReport(true)}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 border-b-[4px] border-b-purple-800 rounded-xl h-12 text-sm font-bold transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px] shadow-lg">
-
-                    <Sparkles className="w-4 h-4" />
-                    <span>초정밀 리포트</span>
-                  </motion.button> :
-
-            <motion.button
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={generateHyperPrecisionReport}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-0 border-b-[4px] border-b-purple-800 rounded-xl h-12 text-sm font-bold transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px] shadow-lg">
-
-                    <Sparkles className="w-4 h-4" />
-                    <span>초정밀 AI</span>
-                  </motion.button>
+              <motion.button
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDownloadData}
+                className="flex-1 bg-white text-gray-700 border border-gray-200 border-b-[4px] border-b-gray-300 rounded-xl h-12 text-sm font-medium transition-all flex items-center justify-center gap-1.5 active:border-b-0 active:translate-y-[4px] active:mb-[4px]">
+                <Download className="w-4 h-4 text-blue-500" />
+                <span>데이터</span>
+              </motion.button>
             }
-              </>
-          }
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -1889,7 +1904,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               <div className="text-lg font-extrabold text-gray-800 tracking-tight">
                  {(selectedSurvey.total_cost || 0).toLocaleString()}
               </div>
-              <div className="w-8 h-0.5 bg-yellow-400 rounded-full mt-2 opacity-50"></div>
+              <div className="w-8 h-0.5 bg-blue-400 rounded-full mt-2 opacity-50"></div>
             </motion.div>
 
             <motion.div
@@ -1913,7 +1928,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               Math.round((selectedSurvey.total_cost || 0) / completedResponses.length).toLocaleString() :
               0}
               </div>
-              <div className="w-8 h-0.5 bg-green-400 rounded-full mt-2 opacity-50"></div>
+              <div className="w-8 h-0.5 bg-blue-400 rounded-full mt-2 opacity-50"></div>
             </motion.div>
           </div>
 
@@ -2085,7 +2100,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed top-4 left-4 right-4 bottom-4 md:top-8 md:left-8 md:right-8 md:bottom-8 max-h-[90vh] bg-white rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col">
 
-                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 flex justify-between items-center">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                         <Sparkles className="w-6 h-6 text-white" />
@@ -2108,11 +2123,11 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                         <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="w-20 h-20 border-4 border-purple-200 border-t-purple-600 rounded-full" />
+                    className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full" />
 
                         <div className="text-center space-y-2">
                           <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2 justify-center">
-                            <Sparkles className="w-6 h-6 text-purple-600" />
+                            <Sparkles className="w-6 h-6 text-blue-600" />
                             심층 리포트 생성 중...
                           </h3>
                           <p className="text-gray-500">전문 컨설턴트 수준의 분석을 진행하고 있습니다</p>
@@ -2125,7 +2140,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                           <ReactMarkdown
                       components={{
                         h2: ({ node, ...props }) =>
-                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b-2 border-purple-200" {...props} />,
+                        <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4 pb-2 border-b-2 border-blue-200" {...props} />,
 
                         h3: ({ node, ...props }) =>
                         <h3 className="text-xl font-bold text-gray-800 mt-6 mb-3" {...props} />,
@@ -2180,7 +2195,7 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                         printWindow.document.close();
                         printWindow.print();
                       }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white">
+                      className="bg-blue-600 hover:bg-blue-700 text-white">
 
                             <Download className="w-4 h-4 mr-2" />
                             PDF로 저장

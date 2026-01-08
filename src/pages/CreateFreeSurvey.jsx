@@ -160,6 +160,24 @@ export default function CreateFreeSurvey() {
 
   const handleImageUpload = async (questionId, file) => {
     if (!file) return;
+
+    // 이미지 파일 형식 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      alert('이미지 파일만 업로드 가능합니다.\n(허용 형식: JPG, JPEG, PNG, GIF, WEBP)');
+      return;
+    }
+
+    // 5MB 용량 제한
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('이미지 용량은 5MB 이하만 가능합니다.');
+      return;
+    }
+
     setUploadingImages(prev => ({ ...prev, [questionId]: true }));
     try {
       const file_url = await UploadFile(file);
@@ -338,6 +356,7 @@ export default function CreateFreeSurvey() {
           options: q.options || [],
           image_urls: q.image_urls || [],
           image_descriptions: q.image_descriptions || [],
+          max_selections: q.max_selections,
           order: i
         });
       }
