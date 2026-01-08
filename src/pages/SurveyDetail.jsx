@@ -387,6 +387,7 @@ export default function SurveyDetail() {
                         question.question_type === 'likert_scale' ? 'bg-indigo-100 text-indigo-700 border-0' :
                         question.question_type === 'ranking' ? 'bg-amber-100 text-amber-700 border-0' :
                         question.question_type === 'choice_with_other' ? 'bg-cyan-100 text-cyan-700 border-0' :
+                        question.question_type === 'branching_choice' ? 'bg-emerald-100 text-emerald-700 border-0' :
                         'bg-gray-100 text-gray-700 border-0'
                       }>
                         {question.question_type === 'multiple_choice' ? '객관식' :
@@ -396,26 +397,27 @@ export default function SurveyDetail() {
                          question.question_type === 'numeric_rating' ? '수치평정' :
                          question.question_type === 'likert_scale' ? '리커트척도' :
                          question.question_type === 'ranking' ? '순위형' :
-                         question.question_type === 'choice_with_other' ? '객관+주관' : question.question_type}
+                         question.question_type === 'choice_with_other' ? '객관+주관' :
+                         question.question_type === 'branching_choice' ? '분기형' : question.question_type}
                       </Badge>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {question.question_type === 'multiple_choice' ? (
+                  {question.question_type === 'multiple_choice' || question.question_type === 'branching_choice' ? (
                     <div className="space-y-3">
                       {getMultipleChoiceStats(question.id, question.options).map((stat, idx) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-700">{stat.option}</span>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-blue-600">{stat.count}명</span>
+                              <span className={`font-bold ${question.question_type === 'branching_choice' ? 'text-emerald-600' : 'text-blue-600'}`}>{stat.count}명</span>
                               <span className="text-gray-500">({stat.percentage.toFixed(0)}%)</span>
                             </div>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-gradient-to-r from-blue-400 to-blue-500 h-2 rounded-full transition-all duration-300"
+                              className={`h-2 rounded-full transition-all duration-300 ${question.question_type === 'branching_choice' ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-blue-400 to-blue-500'}`}
                               style={{ width: `${stat.percentage}%` }}
                             />
                           </div>

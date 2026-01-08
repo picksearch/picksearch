@@ -28,6 +28,7 @@ export default function TakeSurvey() {
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [branchPath, setBranchPath] = useState([]);
+  const [skipQuestions, setSkipQuestions] = useState(new Set()); // 분기로 인해 건너뛸 문항 인덱스들
   const [answers, setAnswers] = useState({});
   const [shortAnswerText, setShortAnswerText] = useState('');
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random()}`);
@@ -589,14 +590,20 @@ export default function TakeSurvey() {
         });
       }
       
-      const currentQuestionList = branchPath.length > 0 
-        ? branchPath[branchPath.length - 1].childQuestions 
+      const currentQuestionList = branchPath.length > 0
+        ? branchPath[branchPath.length - 1].childQuestions
         : rootQuestions;
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      if (currentQuestionIndex < currentQuestionList.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      // 다음 문항 찾기 (skipQuestions에 있는 문항은 건너뜀)
+      let nextIndex = currentQuestionIndex + 1;
+      while (nextIndex < currentQuestionList.length && skipQuestions.has(nextIndex)) {
+        nextIndex++;
+      }
+
+      if (nextIndex < currentQuestionList.length) {
+        setCurrentQuestionIndex(nextIndex);
         resetQuestionStates();
       } else {
         if (branchPath.length > 0) {
@@ -634,6 +641,94 @@ export default function TakeSurvey() {
     setAnswers(newAnswers);
 
     await advanceQuestion(currentQuestion, newAnswers);
+  };
+
+  const handleBranchingChoiceAnswer = async (questionId, answer) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    try {
+      const newAnswers = {
+        ...answers,
+        [questionId]: answer
+      };
+      setAnswers(newAnswers);
+
+      // 응답 저장
+      const answerArray = Object.entries(newAnswers).map(([qId, ans]) => ({
+        question_id: qId,
+        answer: ans
+      }));
+
+      if (responseId && !isCompletingRef.current) {
+        updateResponseMutation.mutate({
+          answers: answerArray,
+          status: 'in_progress'
+        });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // branch_targets에서 이동할 문항 확인
+      const branchTargets = currentQuestion.branch_targets || {};
+      const targetQuestionNumber = branchTargets[answer];
+
+      // 선택하지 않은 다른 분기 경로의 문항들을 스킵 목록에 추가
+      const allTargets = Object.entries(branchTargets)
+        .filter(([opt, target]) => opt !== answer && target > 0)
+        .map(([opt, target]) => target - 1); // 인덱스로 변환
+
+      if (allTargets.length > 0) {
+        const newSkipQuestions = new Set(skipQuestions);
+
+        // 현재 선택한 target과 다른 target들 사이의 문항들 계산
+        const selectedTargetIndex = targetQuestionNumber > 0 ? targetQuestionNumber - 1 : currentQuestionIndex + 1;
+        const maxOtherTarget = Math.max(...allTargets);
+
+        // 다른 분기 경로의 시작점부터 해당 경로 범위의 문항들을 스킵
+        allTargets.forEach(otherTargetIndex => {
+          // 다른 분기의 시작 문항을 스킵 목록에 추가
+          // 그리고 그 문항부터 다음 분기점 또는 선택한 경로까지의 문항들도 스킵
+          for (let i = otherTargetIndex; i < maxOtherTarget + 1 && i !== selectedTargetIndex; i++) {
+            if (i !== selectedTargetIndex) {
+              newSkipQuestions.add(i);
+            }
+          }
+        });
+
+        setSkipQuestions(newSkipQuestions);
+      }
+
+      if (targetQuestionNumber === 0) {
+        // 0 = 설문 종료
+        setIsReadyToSubmit(true);
+      } else if (targetQuestionNumber && targetQuestionNumber > 0) {
+        // 특정 문항으로 이동 (문항 번호는 1부터 시작, 인덱스는 0부터)
+        const targetIndex = targetQuestionNumber - 1;
+        if (targetIndex >= 0 && targetIndex < rootQuestions.length) {
+          setCurrentQuestionIndex(targetIndex);
+          resetQuestionStates();
+        } else {
+          // 유효하지 않은 문항 번호면 다음 문항으로
+          if (currentQuestionIndex < rootQuestions.length - 1) {
+            setCurrentQuestionIndex(currentQuestionIndex + 1);
+            resetQuestionStates();
+          } else {
+            setIsReadyToSubmit(true);
+          }
+        }
+      } else {
+        // 비어있으면 다음 문항으로
+        if (currentQuestionIndex < rootQuestions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+          resetQuestionStates();
+        } else {
+          setIsReadyToSubmit(true);
+        }
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleMultipleSelectToggle = (option) => {
@@ -1173,6 +1268,7 @@ export default function TakeSurvey() {
                      currentQuestion.question_type === 'short_answer' ? '주관식' :
                      currentQuestion.question_type === 'numeric_rating' ? '수치평정' :
                      currentQuestion.question_type === 'likert_scale' ? '리커트 척도' :
+                     currentQuestion.question_type === 'branching_choice' ? '분기형' :
                      currentQuestion.question_type === 'image_banner' ? '이벤트' : '이미지선택'}
                      </div>
                      {currentQuestion.question_type === 'multiple_select' && (
@@ -1220,6 +1316,31 @@ export default function TakeSurvey() {
                         >
                           <span className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold shadow-sm text-xs ${
                             isSelected ? 'bg-white text-orange-600' : 'bg-white text-orange-600'
+                          }`}>
+                            {index + 1}
+                          </span>
+                          <span className="flex-1 text-sm">{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : currentQuestion.question_type === 'branching_choice' ? (
+                  <div className="space-y-2.5">
+                    {currentQuestion.options.map((option, index) => {
+                      const isSelected = answers[currentQuestion.id] === option;
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => handleBranchingChoiceAnswer(currentQuestion.id, option)}
+                          disabled={isProcessing}
+                          className={`w-full p-3.5 rounded-xl text-left font-medium transition-all shadow-sm hover:shadow-md border-2 flex items-center active:scale-98 disabled:opacity-50 ${
+                            isSelected
+                              ? 'bg-emerald-500 text-white border-emerald-600'
+                              : 'bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-gray-800 border-transparent hover:border-emerald-300'
+                          }`}
+                        >
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold shadow-sm text-xs ${
+                            isSelected ? 'bg-white text-emerald-600' : 'bg-white text-emerald-600'
                           }`}>
                             {index + 1}
                           </span>

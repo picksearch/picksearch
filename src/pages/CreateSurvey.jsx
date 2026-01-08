@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Trash2, GripVertical, CheckCircle, ArrowRight, Users, Upload, Image as ImageIcon, Loader2, BarChart2, ListChecks, Coins, Home, Sparkles, MessageSquare, Target, X, Eye, ArrowUp, ArrowDown, Megaphone, Calendar as CalendarIcon, ArrowLeft, Smartphone, MapPin } from "lucide-react";
+import { PlusCircle, Trash2, GripVertical, CheckCircle, ArrowRight, Users, Upload, Image as ImageIcon, Loader2, BarChart2, ListChecks, Coins, Home, Sparkles, MessageSquare, Target, X, Eye, ArrowUp, ArrowDown, Megaphone, Calendar as CalendarIcon, ArrowLeft, Smartphone, MapPin, GitBranch } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TARGET_OPTIONS } from "@/components/targetOptions";
 import { format, addDays, isBefore, startOfDay, differenceInDays } from "date-fns";
@@ -507,12 +507,13 @@ export default function CreateSurvey() {
       id: Date.now(),
       question_text: '',
       question_type: type,
-      options: type === 'multiple_choice' || type === 'multiple_select' || type === 'ranking' || type === 'choice_with_other' ? ['', ''] :
+      options: type === 'multiple_choice' || type === 'multiple_select' || type === 'ranking' || type === 'choice_with_other' || type === 'branching_choice' ? ['', ''] :
         type === 'likert_scale' ? ['', '', '', '', ''] : [],
       image_urls: type === 'image_choice' || type === 'image_banner' ? [] : [],
       image_descriptions: type === 'image_choice' ? [] : [],
       max_selections: type === 'multiple_select' || type === 'ranking' ? null : undefined,
       has_other_option: type === 'choice_with_other' ? true : undefined,
+      branch_targets: type === 'branching_choice' ? {} : undefined,
       order: questions.length,
       cost: 0
     };
@@ -835,6 +836,7 @@ export default function CreateSurvey() {
           image_urls: q.image_urls || [],
           image_descriptions: q.image_descriptions || [],
           max_selections: q.max_selections,
+          branch_targets: q.branch_targets || null,
           order: i
         });
       }
@@ -1053,7 +1055,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
       if (q.max_selections < 2 || q.max_selections > q.options.length) return false;
     }
 
-    if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_select' || q.question_type === 'ranking' || q.question_type === 'choice_with_other') {
+    if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_select' || q.question_type === 'ranking' || q.question_type === 'choice_with_other' || q.question_type === 'branching_choice') {
       return q.options && q.options.length >= 2 && q.options.every((o) => {
         if (typeof o === 'string') return o.trim();
         if (typeof o === 'object' && o !== null) return o.label?.trim() || o.value;
@@ -1955,7 +1957,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                           question.question_type === 'image_banner' ? 'bg-pink-100 text-pink-700 border-0' :
                                             question.question_type === 'short_answer' ? 'bg-gray-100 text-gray-700 border-0' :
                                               question.question_type === 'choice_with_other' ? 'bg-cyan-100 text-cyan-700 border-0' :
-                                                'bg-purple-100 text-purple-700 border-0'
+                                                question.question_type === 'branching_choice' ? 'bg-emerald-100 text-emerald-700 border-0' :
+                                                  'bg-purple-100 text-purple-700 border-0'
                               }>
                                 {question.question_type === 'multiple_choice' ? '객관식' :
                                   question.question_type === 'multiple_select' ? '다중선택' :
@@ -1964,7 +1967,8 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                         question.question_type === 'likert_scale' ? '리커트척도' :
                                           question.question_type === 'image_banner' ? '이벤트배너' :
                                             question.question_type === 'short_answer' ? '주관식' :
-                                              question.question_type === 'choice_with_other' ? '객관+주관' : '이미지선택'}
+                                              question.question_type === 'choice_with_other' ? '객관+주관' :
+                                                question.question_type === 'branching_choice' ? '분기형' : '이미지선택'}
                               </Badge>
                               {questions.length > 1 &&
                                 <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
@@ -2098,6 +2102,94 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                 size="sm"
                                 onClick={() => addOption(question.id)}
                                 className="w-full border-dashed rounded-xl">
+
+                                <PlusCircle className="w-4 h-4 mr-2" />
+                                선택지 추가 ({question.options.length}/10)
+                              </Button>
+                            }
+                          </CardContent>
+                        }
+
+                        {question.question_type === 'branching_choice' &&
+                          <CardContent className="pt-0 space-y-2">
+                            <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200 mb-2">
+                              <p className="text-xs text-emerald-700 font-medium">
+                                🔀 선택지별로 이동할 문항 번호를 지정합니다 (0 = 설문 종료, 비워두면 다음 문항)
+                              </p>
+                            </div>
+                            {question.options.map((option, optIndex) =>
+                              <div key={optIndex} className="space-y-1">
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={option}
+                                    onChange={(e) => {
+                                      const oldOption = question.options[optIndex];
+                                      const newOptions = [...question.options];
+                                      newOptions[optIndex] = e.target.value;
+
+                                      // branch_targets 키도 함께 업데이트
+                                      const newBranchTargets = { ...question.branch_targets };
+                                      if (oldOption && newBranchTargets[oldOption] !== undefined) {
+                                        newBranchTargets[e.target.value] = newBranchTargets[oldOption];
+                                        delete newBranchTargets[oldOption];
+                                      }
+
+                                      updateQuestion(question.id, { ...question, options: newOptions, branch_targets: newBranchTargets });
+                                    }}
+                                    placeholder={`선택지 ${optIndex + 1}`}
+                                    className="border-gray-200 rounded-xl" />
+
+                                  {question.options.length > 2 &&
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        const newOptions = question.options.filter((_, i) => i !== optIndex);
+                                        const newBranchTargets = { ...question.branch_targets };
+                                        delete newBranchTargets[option];
+                                        updateQuestion(question.id, { ...question, options: newOptions, branch_targets: newBranchTargets });
+                                      }}
+                                      className="text-red-500">
+
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  }
+                                </div>
+                                <div className="flex items-center gap-2 ml-4">
+                                  <span className="text-xs text-emerald-600 font-medium">→ 이동할 문항:</span>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={questions.length}
+                                    value={option ? (question.branch_targets?.[option] ?? '') : ''}
+                                    onChange={(e) => {
+                                      if (!option) return; // 선택지가 비어있으면 무시
+                                      const value = e.target.value === '' ? null : parseInt(e.target.value);
+                                      const newBranchTargets = { ...question.branch_targets };
+                                      if (value === null) {
+                                        delete newBranchTargets[option];
+                                      } else {
+                                        newBranchTargets[option] = value;
+                                      }
+                                      updateQuestion(question.id, { ...question, branch_targets: newBranchTargets });
+                                    }}
+                                    placeholder="다음"
+                                    disabled={!option}
+                                    className="w-20 h-8 text-xs border-emerald-200 rounded-lg disabled:bg-gray-100" />
+                                  <span className="text-xs text-gray-400">
+                                    {!option ? '(선택지 입력 필요)' :
+                                     question.branch_targets?.[option] === 0 ? '(설문 종료)' :
+                                     question.branch_targets?.[option] ? `(Q${question.branch_targets[option]}로 이동)` : '(다음 문항)'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {question.options.length < 10 &&
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addOption(question.id)}
+                                className="w-full border-dashed rounded-xl border-emerald-300 text-emerald-600">
 
                                 <PlusCircle className="w-4 h-4 mr-2" />
                                 선택지 추가 ({question.options.length}/10)
@@ -2331,6 +2423,17 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                   <div className="text-center">
                     <ListChecks className="w-5 h-5 text-cyan-600 mx-auto mb-1" />
                     <div className="font-bold text-cyan-900 text-sm">객관+주관</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => addQuestion('branching_choice')}
+                  className="p-4 rounded-xl bg-white border-2 border-emerald-100 hover:border-emerald-400 hover:bg-emerald-50 transition-all cursor-pointer touch-manipulation"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}>
+
+                  <div className="text-center">
+                    <GitBranch className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
+                    <div className="font-bold text-emerald-900 text-sm">분기형</div>
                   </div>
                 </button>
 
