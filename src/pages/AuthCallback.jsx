@@ -74,13 +74,13 @@ export default function AuthCallback() {
   }, [navigate, searchParams]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-white rounded-3xl shadow-xl border-0 overflow-hidden">
         <CardContent className="p-8 text-center">
           {status === "loading" && (
             <>
-              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">
                 로그인 처리 중...
@@ -112,7 +112,7 @@ export default function AuthCallback() {
               <p className="text-gray-500 mb-4">{error}</p>
               <button
                 onClick={() => navigate("/login")}
-                className="text-orange-600 hover:text-orange-700 font-medium"
+                className="text-blue-600 hover:text-blue-700 font-medium"
               >
                 로그인 페이지로 돌아가기
               </button>

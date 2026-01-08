@@ -301,13 +301,15 @@ export default function SurveyDetail() {
             <span className="text-blue-600">{survey.title}</span>
           </h1>
           <p className="text-[#8B95A1] text-sm font-medium mb-4">{survey.description}</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge className="bg-blue-100 text-blue-700 border-0">
               {survey.status === 'live' ? '진행중' : survey.status === 'pending' ? '대기중' : '종료'}
             </Badge>
-            <span className="text-sm text-[#8B95A1]">
-              {formatKST(survey.created_at)}
-            </span>
+            {survey.scheduled_start && (
+              <span className="text-sm text-[#8B95A1]">
+                {formatKST(survey.scheduled_start)} ~ {survey.scheduled_end ? formatKST(survey.scheduled_end) : ''}
+              </span>
+            )}
           </div>
         </div>
       </motion.div>
@@ -384,6 +386,7 @@ export default function SurveyDetail() {
                         question.question_type === 'numeric_rating' ? 'bg-teal-100 text-teal-700 border-0' :
                         question.question_type === 'likert_scale' ? 'bg-indigo-100 text-indigo-700 border-0' :
                         question.question_type === 'ranking' ? 'bg-amber-100 text-amber-700 border-0' :
+                        question.question_type === 'choice_with_other' ? 'bg-cyan-100 text-cyan-700 border-0' :
                         'bg-gray-100 text-gray-700 border-0'
                       }>
                         {question.question_type === 'multiple_choice' ? '객관식' :
@@ -392,7 +395,8 @@ export default function SurveyDetail() {
                          question.question_type === 'image_choice' ? '이미지선택' :
                          question.question_type === 'numeric_rating' ? '수치평정' :
                          question.question_type === 'likert_scale' ? '리커트척도' :
-                         question.question_type === 'ranking' ? '순위형' : question.question_type}
+                         question.question_type === 'ranking' ? '순위형' :
+                         question.question_type === 'choice_with_other' ? '객관+주관' : question.question_type}
                       </Badge>
                     </div>
                   </div>

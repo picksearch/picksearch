@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import Logo from "@/assets/Logo_2.png";
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -108,21 +109,19 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <Card className="bg-white rounded-3xl shadow-xl border-0 overflow-hidden">
-          <div className="h-2 bg-gradient-to-r from-orange-500 to-pink-500" />
+          <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600" />
 
           <CardHeader className="text-center pb-2 pt-8">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4">
-              <span className="text-3xl">🔍</span>
-            </div>
+            <img src={Logo} alt="픽서치 로고" className="h-10 mx-auto mb-4" />
             <CardTitle className="text-2xl font-bold text-gray-900">
-              픽서치 로그인
+              로그인
             </CardTitle>
             <p className="text-gray-500 text-sm mt-2">
               정밀 타겟 데이터 수집 설문 플랫폼
@@ -181,7 +180,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="이메일을 입력하세요"
-                    className="pl-12 h-12 rounded-xl border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    className="pl-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -199,7 +198,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="비밀번호를 입력하세요"
-                    className="pl-12 pr-12 h-12 rounded-xl border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    className="pl-12 pr-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                   <button
@@ -219,7 +218,7 @@ export default function Login() {
               <div className="flex justify-end">
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
                   비밀번호를 잊으셨나요?
                 </Link>
@@ -228,7 +227,7 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200"
+                className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200"
               >
                 {isLoading ? (
                   <>
@@ -246,7 +245,7 @@ export default function Login() {
                 계정이 없으신가요?{" "}
                 <Link
                   to="/signup"
-                  className="text-orange-600 hover:text-orange-700 font-bold"
+                  className="text-blue-600 hover:text-blue-700 font-bold"
                 >
                   회원가입
                 </Link>

@@ -120,6 +120,20 @@ export default function CreateSurvey() {
       return;
     }
 
+    // 복사 모드이면 temp state 무시하고 복사 로직 실행
+    if (copied === 'true') {
+      localStorage.removeItem('temp_survey_state');
+      loadCopiedSurvey();
+      return;
+    }
+
+    // AI 생성 모드이면 temp state 무시
+    if (aiGenerated === 'true') {
+      localStorage.removeItem('temp_survey_state');
+      loadAIGeneratedSurvey();
+      return;
+    }
+
     const tempState = localStorage.getItem('temp_survey_state');
     if (tempState) {
       try {
@@ -152,11 +166,7 @@ export default function CreateSurvey() {
       }
     }
 
-    if (aiGenerated === 'true') {
-      loadAIGeneratedSurvey();
-    } else if (copied === 'true') {
-      loadCopiedSurvey();
-    } else if (startStep === '1') {
+    if (startStep === '1') {
       // ClientHome에서 바로 step 1로 이동
       setCurrentStep(1);
     } else {
@@ -212,8 +222,11 @@ export default function CreateSurvey() {
   const loadCopiedSurvey = () => {
     try {
       const stored = localStorage.getItem('copied_survey');
+      console.log('[복사] localStorage 데이터:', stored);
       if (stored) {
         const data = JSON.parse(stored);
+        console.log('[복사] 파싱된 데이터:', data);
+        console.log('[복사] target_options:', data.target_options);
         setTitle(data.title || "");
         setDescription(data.description || "");
         setPurpose(data.survey_purpose || "");
@@ -221,7 +234,33 @@ export default function CreateSurvey() {
         setQuestions(data.questions || []);
 
         if (data.target_options) {
-          setTargetSettings(Array.isArray(data.target_options) ? data.target_options : data.target_options.cells || null);
+          const loadedTargets = Array.isArray(data.target_options) ? data.target_options : data.target_options.cells || null;
+          setTargetSettings(loadedTargets);
+
+          // 타겟 설정이 있으면 enableAdditionalTargets 체크
+          if (loadedTargets) {
+            const hasNonDemoTargets = loadedTargets.some((cell) => {
+              const targets = cell.targets || {};
+              return Object.keys(targets).some((key) => {
+                if (key !== 'DEMO') return true;
+                const demoFields = targets[key];
+                return Object.keys(demoFields).some((field) => field !== 'gender' && field !== 'age_10s');
+              });
+            });
+            if (hasNonDemoTargets) {
+              setEnableAdditionalTargets(true);
+            }
+          }
+
+          // customAppText, customLocationText 복원
+          if (data.target_options?.customAppText) {
+            setCustomAppText(data.target_options.customAppText);
+            setEnableAppTargets(true);
+          }
+          if (data.target_options?.customLocationText) {
+            setCustomLocationText(data.target_options.customLocationText);
+            setEnableLocationTargets(true);
+          }
         }
 
         if (data.scheduled_start && data.scheduled_end) {
@@ -607,6 +646,9 @@ export default function CreateSurvey() {
 
   const saveDraftMutation = useMutation({
     mutationFn: async (options = {}) => {
+      console.log('[저장] targetSettings:', targetSettings);
+      console.log('[저장] customAppText:', customAppText);
+      console.log('[저장] customLocationText:', customLocationText);
       let surveyId = draftSurveyId;
       const statusToSave = options.status || 'draft';
 
@@ -626,8 +668,8 @@ export default function CreateSurvey() {
           landing_enabled: useLandingPage,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
-          target_options: targetSettings ? {
-            cells: targetSettings,
+          target_options: (targetSettings || customAppText || customLocationText) ? {
+            cells: targetSettings || null,
             customAppText: customAppText || undefined,
             customLocationText: customLocationText || undefined
           } : {},
@@ -646,8 +688,8 @@ export default function CreateSurvey() {
           landing_enabled: useLandingPage,
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
-          target_options: targetSettings ? {
-            cells: targetSettings,
+          target_options: (targetSettings || customAppText || customLocationText) ? {
+            cells: targetSettings || null,
             customAppText: customAppText || undefined,
             customLocationText: customLocationText || undefined
           } : {},
@@ -691,6 +733,9 @@ export default function CreateSurvey() {
 
   const createSurveyMutation = useMutation({
     mutationFn: async () => {
+      console.log('[결제저장] targetSettings:', targetSettings);
+      console.log('[결제저장] customAppText:', customAppText);
+      console.log('[결제저장] customLocationText:', customLocationText);
       if (!user) {
         alert('설문조사를 생성하려면 가입이 필요합니다.');
         saveTempState();
@@ -731,8 +776,8 @@ export default function CreateSurvey() {
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           total_cost: totalCost,
-          target_options: targetSettings ? {
-            cells: targetSettings,
+          target_options: (targetSettings || customAppText || customLocationText) ? {
+            cells: targetSettings || null,
             customAppText: customAppText || undefined,
             customLocationText: customLocationText || undefined
           } : {}
@@ -758,8 +803,8 @@ export default function CreateSurvey() {
           scheduled_start: startDate ? format(startDate, 'yyyy-MM-dd') : null,
           scheduled_end: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           total_cost: totalCost,
-          target_options: targetSettings ? {
-            cells: targetSettings,
+          target_options: (targetSettings || customAppText || customLocationText) ? {
+            cells: targetSettings || null,
             customAppText: customAppText || undefined,
             customLocationText: customLocationText || undefined
           } : {},

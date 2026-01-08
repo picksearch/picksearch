@@ -257,6 +257,8 @@ export default function MySurveys() {
 
   const copySurvey = async (survey) => {
     try {
+      console.log('[복사] 원본 설문:', survey);
+      console.log('[복사] 원본 target_options:', survey.target_options);
       const questions = await Question.filter({ survey_id: survey.id }, 'order');
 
       const isFreeSurvey = survey.survey_type === 'free';
