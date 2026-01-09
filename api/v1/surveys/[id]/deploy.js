@@ -1,7 +1,7 @@
-import { supabaseAdmin } from '../../../../utils/supabase.js';
-import { authenticateRequest } from '../../../../utils/auth.js';
-import { sendResponse, sendError } from '../../../../utils/response.js';
-import { dispatchWebhook } from '../../../../utils/webhook.js';
+import { supabaseAdmin } from '../../../../../lib/utils/supabase.js';
+import { authenticateRequest } from '../../../../../lib/utils/auth.js';
+import { sendResponse, sendError } from '../../../../../lib/utils/response.js';
+import { dispatchWebhook } from '../../../../../lib/utils/webhook.js';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {

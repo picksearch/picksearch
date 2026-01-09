@@ -1,4 +1,4 @@
-import { sendResponse, sendError } from '../../utils/response.js';
+import { sendResponse, sendError } from '../../../lib/utils/response.js';
 
 // Copied from src/components/targetOptions.jsx to ensure API independence
 const TARGET_OPTIONS = {
