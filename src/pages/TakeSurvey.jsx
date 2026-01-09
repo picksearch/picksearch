@@ -28,6 +28,7 @@ export default function TakeSurvey() {
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [branchPath, setBranchPath] = useState([]);
+  const [questionHistory, setQuestionHistory] = useState([]); // 질문 이동 히스토리 (이전 질문 추적용)
   const [skipQuestions, setSkipQuestions] = useState(new Set()); // 분기로 인해 건너뛸 문항 인덱스들
   const [answers, setAnswers] = useState({});
   const [shortAnswerText, setShortAnswerText] = useState('');
@@ -290,18 +291,22 @@ export default function TakeSurvey() {
   const handlePrevious = () => {
     if (isProcessing) return;
 
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    // 히스토리가 있으면 히스토리에서 이전 위치로 이동
+    if (questionHistory.length > 0) {
+      const prevIndex = questionHistory[questionHistory.length - 1];
+      setQuestionHistory(prev => prev.slice(0, -1));
+      setCurrentQuestionIndex(prevIndex);
       resetQuestionStates();
     } else if (branchPath.length > 0) {
+      // 히스토리가 없고 분기 경로가 있으면 상위 분기로 이동
       const lastBranch = branchPath[branchPath.length - 1];
       const parentId = lastBranch.parentQuestionId;
 
       const newBranchPath = branchPath.slice(0, -1);
       setBranchPath(newBranchPath);
 
-      const parentList = newBranchPath.length > 0 
-        ? newBranchPath[newBranchPath.length - 1].childQuestions 
+      const parentList = newBranchPath.length > 0
+        ? newBranchPath[newBranchPath.length - 1].childQuestions
         : rootQuestions;
 
       const parentIndex = parentList.findIndex(q => q.id === parentId);
@@ -603,6 +608,7 @@ export default function TakeSurvey() {
       }
 
       if (nextIndex < currentQuestionList.length) {
+        setQuestionHistory(prev => [...prev, currentQuestionIndex]);
         setCurrentQuestionIndex(nextIndex);
         resetQuestionStates();
       } else {
@@ -701,16 +707,19 @@ export default function TakeSurvey() {
 
       if (targetQuestionNumber === 0) {
         // 0 = 설문 종료
+        setQuestionHistory(prev => [...prev, currentQuestionIndex]);
         setIsReadyToSubmit(true);
       } else if (targetQuestionNumber && targetQuestionNumber > 0) {
         // 특정 문항으로 이동 (문항 번호는 1부터 시작, 인덱스는 0부터)
         const targetIndex = targetQuestionNumber - 1;
         if (targetIndex >= 0 && targetIndex < rootQuestions.length) {
+          setQuestionHistory(prev => [...prev, currentQuestionIndex]);
           setCurrentQuestionIndex(targetIndex);
           resetQuestionStates();
         } else {
           // 유효하지 않은 문항 번호면 다음 문항으로
           if (currentQuestionIndex < rootQuestions.length - 1) {
+            setQuestionHistory(prev => [...prev, currentQuestionIndex]);
             setCurrentQuestionIndex(currentQuestionIndex + 1);
             resetQuestionStates();
           } else {
@@ -720,6 +729,7 @@ export default function TakeSurvey() {
       } else {
         // 비어있으면 다음 문항으로
         if (currentQuestionIndex < rootQuestions.length - 1) {
+          setQuestionHistory(prev => [...prev, currentQuestionIndex]);
           setCurrentQuestionIndex(currentQuestionIndex + 1);
           resetQuestionStates();
         } else {
@@ -1812,7 +1822,7 @@ export default function TakeSurvey() {
                 )}
 
                 {/* Previous Button */}
-                {(currentQuestionIndex > 0 || branchPath.length > 0) && (
+                {(questionHistory.length > 0 || branchPath.length > 0) && (
                   <div className="mt-6 flex justify-center">
                     <Button
                       variant="ghost"

@@ -206,6 +206,8 @@ export default function MySurveys() {
         return { icon: CircleDot, label: '객관식', color: 'text-blue-500' };
       case 'choice_with_other':
         return { icon: CircleDot, label: '객관+주관', color: 'text-cyan-500' };
+      case 'branching_choice':
+        return { icon: CircleDot, label: '분기형', color: 'text-orange-500' };
       case 'multiple_select':
         return { icon: CheckSquare, label: '다중선택', color: 'text-violet-500' };
       case 'ranking':
@@ -666,14 +668,14 @@ export default function MySurveys() {
                         </div>
 
                         {/* Options - 객관식, 객관+주관, 다중선택, 순위형 */}
-                        {['multiple_choice', 'choice_with_other', 'multiple_select', 'ranking'].includes(question.question_type) && question.options?.length > 0 && (
+                        {['multiple_choice', 'choice_with_other', 'branching_choice', 'multiple_select', 'ranking'].includes(question.question_type) && question.options?.length > 0 && (
                           <div className="ml-10 space-y-2">
                             {question.options.map((option, optIdx) => (
                               <div
                                 key={optIdx}
                                 className="flex items-center gap-2.5 px-3 py-2 bg-white rounded-lg border border-gray-200"
                               >
-                                {question.question_type === 'multiple_choice' || question.question_type === 'choice_with_other' ? (
+                                {question.question_type === 'multiple_choice' || question.question_type === 'choice_with_other' || question.question_type === 'branching_choice' ? (
                                   <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
                                 ) : question.question_type === 'ranking' ? (
                                   <div className="w-5 h-5 rounded bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">

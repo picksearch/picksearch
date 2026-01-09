@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Trash2, GripVertical, CheckCircle, Upload, Image as ImageIcon, Loader2, BarChart2, ListChecks, Coins, Home, MessageSquare, ArrowUp, ArrowDown, X, Eye, Save, ArrowLeft } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { PlusCircle, Trash2, GripVertical, CheckCircle, Upload, Image as ImageIcon, Loader2, BarChart2, ListChecks, Coins, Home, MessageSquare, X, Eye, Save, ArrowLeft, GitBranch } from "lucide-react";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { Link } from "react-router-dom";
 
 const FREE_SURVEY_COST = 2; // 2 서치코인
@@ -113,12 +113,13 @@ export default function CreateFreeSurvey() {
       id: Date.now(),
       question_text: '',
       question_type: type,
-      options: (type === 'multiple_choice' || type === 'multiple_select' || type === 'ranking' || type === 'choice_with_other') ? ['', ''] :
+      options: (type === 'multiple_choice' || type === 'multiple_select' || type === 'ranking' || type === 'choice_with_other' || type === 'branching_choice') ? ['', ''] :
         (type === 'likert_scale') ? ['', '', '', '', ''] : [],
       image_urls: (type === 'image_choice' || type === 'image_banner') ? [] : [],
       image_descriptions: type === 'image_choice' ? [] : [],
       max_selections: (type === 'multiple_select' || type === 'ranking') ? null : undefined,
       has_other_option: type === 'choice_with_other' ? true : undefined,
+      branch_targets: type === 'branching_choice' ? {} : undefined,
       order: questions.length,
       cost: 0
     };
@@ -224,16 +225,6 @@ export default function CreateFreeSurvey() {
 
   const removeQuestion = (id) => {
     setQuestions(questions.filter(q => q.id !== id));
-  };
-
-  const moveQuestion = (index, direction) => {
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === questions.length - 1) return;
-    const newQuestions = [...questions];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    [newQuestions[index], newQuestions[targetIndex]] = [newQuestions[targetIndex], newQuestions[index]];
-    newQuestions.forEach((q, idx) => { q.order = idx; });
-    setQuestions(newQuestions);
   };
 
   const saveDraftMutation = useMutation({
@@ -376,7 +367,7 @@ export default function CreateFreeSurvey() {
 
   const canSubmit = title && questions.length > 0 && questions.every(q => {
     if (!q.question_text?.trim()) return false;
-    if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_select' || q.question_type === 'ranking' || q.question_type === 'choice_with_other') {
+    if (q.question_type === 'multiple_choice' || q.question_type === 'multiple_select' || q.question_type === 'ranking' || q.question_type === 'choice_with_other' || q.question_type === 'branching_choice') {
       return q.options?.length >= 2 && q.options.every(o => o?.trim());
     }
     if (q.question_type === 'image_choice') return q.image_urls.length === 2;
@@ -502,19 +493,24 @@ export default function CreateFreeSurvey() {
           <Badge className="bg-emerald-100 text-emerald-700 border-0">{questions.length}개</Badge>
         </div>
 
-        <AnimatePresence>
+        <Reorder.Group axis="y" values={questions} onReorder={setQuestions} className="space-y-3">
           {questions.map((question, index) => (
-            <motion.div
+            <Reorder.Item
               key={question.id}
+              value={question}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              whileDrag={{ scale: 1.02, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", zIndex: 50 }}
+              className="list-none"
             >
               <Card className="bg-white rounded-2xl shadow-sm border-0">
                 <CardHeader className="pb-3">
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-2 mt-1">
-                      <GripVertical className="w-4 h-4 text-gray-400" />
+                      <div className="cursor-grab active:cursor-grabbing p-1 -m-1 hover:bg-gray-100 rounded touch-none">
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                      </div>
                       <Badge className="bg-emerald-100 text-emerald-700 border-0">Q{index + 1}</Badge>
                     </div>
                     <div className="flex-1">
@@ -536,16 +532,6 @@ export default function CreateFreeSurvey() {
                         />
                       )}
                       <div className="flex items-center gap-2">
-                        {questions.length > 1 && (
-                          <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
-                            <Button variant="ghost" size="icon" onClick={() => moveQuestion(index, 'up')} disabled={index === 0} className="h-6 w-6">
-                              <ArrowUp className="w-3 h-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => moveQuestion(index, 'down')} disabled={index === questions.length - 1} className="h-6 w-6">
-                              <ArrowDown className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        )}
                         <Badge className={
                           question.question_type === 'multiple_choice' ? 'bg-blue-100 text-blue-700 border-0' :
                             question.question_type === 'multiple_select' ? 'bg-violet-100 text-violet-700 border-0' :
@@ -555,7 +541,8 @@ export default function CreateFreeSurvey() {
                                     question.question_type === 'image_banner' ? 'bg-pink-100 text-pink-700 border-0' :
                                       question.question_type === 'short_answer' ? 'bg-gray-100 text-gray-700 border-0' :
                                         question.question_type === 'choice_with_other' ? 'bg-cyan-100 text-cyan-700 border-0' :
-                                          'bg-purple-100 text-purple-700 border-0'
+                                          question.question_type === 'branching_choice' ? 'bg-emerald-100 text-emerald-700 border-0' :
+                                            'bg-purple-100 text-purple-700 border-0'
                         }>
                           {question.question_type === 'multiple_choice' ? '객관식' :
                             question.question_type === 'multiple_select' ? '다중선택' :
@@ -564,7 +551,8 @@ export default function CreateFreeSurvey() {
                                   question.question_type === 'likert_scale' ? '리커트척도' :
                                     question.question_type === 'image_banner' ? '이벤트배너' :
                                       question.question_type === 'short_answer' ? '주관식' :
-                                        question.question_type === 'choice_with_other' ? '객관+주관' : '이미지선택'}
+                                        question.question_type === 'choice_with_other' ? '객관+주관' :
+                                          question.question_type === 'branching_choice' ? '분기형' : '이미지선택'}
                         </Badge>
                       </div>
                     </div>
@@ -656,6 +644,91 @@ export default function CreateFreeSurvey() {
                   </CardContent>
                 )}
 
+                {question.question_type === 'branching_choice' && (
+                  <CardContent className="pt-0 space-y-2">
+                    <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200 mb-2">
+                      <p className="text-xs text-emerald-700 font-medium">
+                        🔀 선택지별로 이동할 문항 번호를 지정합니다 (0 = 설문 종료, 비워두면 다음 문항, 이동 후 순차 진행)
+                      </p>
+                    </div>
+                    {question.options.map((option, optIndex) => (
+                      <div key={optIndex} className="space-y-1">
+                        <div className="flex gap-2">
+                          <Input
+                            value={option}
+                            onChange={(e) => {
+                              const oldOption = question.options[optIndex];
+                              const newOptions = [...question.options];
+                              newOptions[optIndex] = e.target.value;
+                              const newBranchTargets = { ...question.branch_targets };
+                              if (oldOption && newBranchTargets[oldOption] !== undefined) {
+                                newBranchTargets[e.target.value] = newBranchTargets[oldOption];
+                                delete newBranchTargets[oldOption];
+                              }
+                              updateQuestion(question.id, { ...question, options: newOptions, branch_targets: newBranchTargets });
+                            }}
+                            placeholder={`선택지 ${optIndex + 1}`}
+                            className="border-gray-200 rounded-xl"
+                          />
+                          {question.options.length > 2 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                const newOptions = question.options.filter((_, i) => i !== optIndex);
+                                const newBranchTargets = { ...question.branch_targets };
+                                delete newBranchTargets[option];
+                                updateQuestion(question.id, { ...question, options: newOptions, branch_targets: newBranchTargets });
+                              }}
+                              className="text-red-500"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          <span className="text-xs text-emerald-600 font-medium">→ 이동할 문항:</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={questions.length}
+                            value={option ? (question.branch_targets?.[option] ?? '') : ''}
+                            onChange={(e) => {
+                              if (!option) return;
+                              const value = e.target.value === '' ? null : parseInt(e.target.value);
+                              const newBranchTargets = { ...question.branch_targets };
+                              if (value === null) {
+                                delete newBranchTargets[option];
+                              } else {
+                                newBranchTargets[option] = value;
+                              }
+                              updateQuestion(question.id, { ...question, branch_targets: newBranchTargets });
+                            }}
+                            placeholder="숫자"
+                            disabled={!option}
+                            className="w-20 h-8 text-xs border-emerald-200 rounded-lg disabled:bg-gray-100"
+                          />
+                          <span className="text-xs text-gray-400">
+                            {!option ? '(선택지 입력 필요)' :
+                              question.branch_targets?.[option] === 0 ? '(설문 종료)' :
+                                question.branch_targets?.[option] ? `(Q${question.branch_targets[option]}로 이동)` : '(다음 문항)'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {question.options.length < 10 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => updateQuestion(question.id, { ...question, options: [...question.options, ''] })}
+                        className="w-full border-dashed rounded-xl"
+                      >
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        선택지 추가 ({question.options.length}/10)
+                      </Button>
+                    )}
+                  </CardContent>
+                )}
+
                 {question.question_type === 'numeric_rating' && (
                   <CardContent className="pt-0">
                     <div className="bg-teal-50 rounded-xl p-4 border border-teal-200">
@@ -702,13 +775,14 @@ export default function CreateFreeSurvey() {
 
                 {question.question_type === 'image_choice' && (
                   <CardContent className="pt-0 space-y-3">
+                    <p className="text-xs text-purple-600 font-medium">※ 이미지 용량: 최대 5MB</p>
                     <div className="space-y-2">
                       {question.image_urls.map((url, imgIndex) => (
                         <div key={imgIndex} className="space-y-2">
-                          <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200">
-                            <img src={url} alt={`이미지 ${imgIndex + 1}`} className="w-full h-full object-cover" />
-                            <button onClick={() => removeImage(question.id, imgIndex)} className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white">×</button>
-                            <div className="absolute bottom-2 left-2 bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold">선택지 {imgIndex + 1}</div>
+                          <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
+                            <img src={url} alt={`이미지 ${imgIndex + 1}`} className="max-w-full max-h-full object-contain" />
+                            <button onClick={() => removeImage(question.id, imgIndex)} className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 shadow-lg">×</button>
+                            <div className="absolute bottom-2 left-2 bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-md">선택지 {imgIndex + 1}</div>
                           </div>
                           <Input
                             value={(question.image_descriptions || [])[imgIndex] || ''}
@@ -719,12 +793,13 @@ export default function CreateFreeSurvey() {
                         </div>
                       ))}
                       {question.image_urls.length < 2 && (
-                        <label className="w-full aspect-[4/3] rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 cursor-pointer flex flex-col items-center justify-center gap-2 bg-purple-50">
+                        <label className="w-full aspect-square rounded-xl border-2 border-dashed border-purple-300 cursor-pointer flex flex-col items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 transition-all">
                           <input type="file" accept="image/*" onChange={(e) => handleImageUpload(question.id, e.target.files[0])} className="hidden" disabled={uploadingImages[question.id]} />
                           {uploadingImages[question.id] ? <Loader2 className="w-10 h-10 text-purple-500 animate-spin" /> : (
                             <>
                               <Upload className="w-10 h-10 text-purple-500" />
                               <span className="text-base text-purple-600 font-medium">이미지 업로드 ({question.image_urls.length}/2)</span>
+                              <span className="text-xs text-purple-400">최대 5MB</span>
                             </>
                           )}
                         </label>
@@ -735,18 +810,22 @@ export default function CreateFreeSurvey() {
 
                 {question.question_type === 'image_banner' && (
                   <CardContent className="pt-0 space-y-3">
+                    <div className="bg-pink-50 border border-pink-200 rounded-xl p-3 text-sm text-pink-700">
+                      📢 이벤트/홍보용 1:1 이미지 (최대 5MB)
+                    </div>
                     {question.image_urls.length > 0 ? (
-                      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200">
-                        <img src={question.image_urls[0]} alt="배너" className="w-full h-full object-cover" />
-                        <button onClick={() => removeImage(question.id, 0)} className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white">×</button>
+                      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
+                        <img src={question.image_urls[0]} alt="배너" className="max-w-full max-h-full object-contain" />
+                        <button onClick={() => removeImage(question.id, 0)} className="absolute top-2 right-2 w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors">×</button>
                       </div>
                     ) : (
-                      <label className="w-full aspect-square rounded-xl border-2 border-dashed border-pink-300 hover:border-pink-500 cursor-pointer flex flex-col items-center justify-center gap-2 bg-pink-50">
+                      <label className="w-full aspect-square rounded-xl border-2 border-dashed border-pink-300 hover:border-pink-500 cursor-pointer flex flex-col items-center justify-center gap-2 bg-pink-50 hover:bg-pink-100 transition-all">
                         <input type="file" accept="image/*" onChange={(e) => handleImageUpload(question.id, e.target.files[0])} className="hidden" disabled={uploadingImages[question.id]} />
                         {uploadingImages[question.id] ? <Loader2 className="w-10 h-10 text-pink-500 animate-spin" /> : (
                           <>
                             <Upload className="w-10 h-10 text-pink-500" />
                             <span className="text-base text-pink-600 font-medium">1:1 이미지 업로드</span>
+                            <span className="text-xs text-pink-400">최대 5MB</span>
                           </>
                         )}
                       </label>
@@ -754,9 +833,9 @@ export default function CreateFreeSurvey() {
                   </CardContent>
                 )}
               </Card>
-            </motion.div>
+            </Reorder.Item>
           ))}
-        </AnimatePresence>
+        </Reorder.Group>
 
         {/* Add Question Buttons */}
         <div className="grid grid-cols-2 gap-3">
@@ -770,6 +849,7 @@ export default function CreateFreeSurvey() {
             { type: 'image_choice', label: '이미지선택', icon: ImageIcon, color: 'purple' },
             { type: 'image_banner', label: '이벤트배너', icon: ImageIcon, color: 'pink' },
             { type: 'choice_with_other', label: '객관+주관', icon: MessageSquare, color: 'cyan' },
+            { type: 'branching_choice', label: '분기형', icon: GitBranch, color: 'emerald' },
           ].map(({ type, label, icon: Icon, color }) => (
             <button
               key={type}

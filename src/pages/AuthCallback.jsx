@@ -57,7 +57,7 @@ export default function AuthCallback() {
 
           // Redirect after a short delay
           setTimeout(() => {
-            const redirectTo = searchParams.get("redirect") || "/";
+            const redirectTo = searchParams.get("redirect") || "/clienthome";
             navigate(redirectTo, { replace: true });
           }, 1500);
         } else {

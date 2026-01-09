@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Trash2, GripVertical, CheckCircle, ArrowRight, Users, Upload, Image as ImageIcon, Loader2, BarChart2, ListChecks, Coins, Home, Sparkles, MessageSquare, Target, X, Eye, ArrowUp, ArrowDown, Megaphone, Calendar as CalendarIcon, ArrowLeft, Smartphone, MapPin, GitBranch } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { PlusCircle, Trash2, GripVertical, CheckCircle, ArrowRight, Users, Upload, Image as ImageIcon, Loader2, BarChart2, ListChecks, Coins, Home, Sparkles, MessageSquare, Target, X, Eye, Megaphone, Calendar as CalendarIcon, ArrowLeft, Smartphone, MapPin, GitBranch } from "lucide-react";
+import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import { TARGET_OPTIONS } from "@/components/targetOptions";
 import { format, addDays, isBefore, startOfDay, differenceInDays } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -622,27 +622,6 @@ export default function CreateSurvey() {
 
   const removeQuestion = (id) => {
     setQuestions(questions.filter((q) => q.id !== id));
-  };
-
-  const moveQuestion = (index, direction) => {
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === questions.length - 1) return;
-
-    const newQuestions = [...questions];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    const movedQuestionId = newQuestions[index].id;
-
-    console.log('🔄 질문 이동:', { movedQuestionId, from: index, to: targetIndex, direction });
-
-    [newQuestions[index], newQuestions[targetIndex]] = [newQuestions[targetIndex], newQuestions[index]];
-
-    newQuestions.forEach((q, idx) => {
-      q.order = idx;
-    });
-
-    setQuestions(newQuestions);
-    setHighlightedQuestionId(movedQuestionId);
-    console.log('✅ 하이라이트 설정:', movedQuestionId);
   };
 
   const saveDraftMutation = useMutation({
@@ -1923,19 +1902,22 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-3">
-              <AnimatePresence>
+              <Reorder.Group axis="y" values={questions} onReorder={setQuestions} className="space-y-3">
                 {questions.map((question, index) => {
                   const isHighlighted = highlightedQuestionId === question.id;
 
                   return (
-                    <motion.div
+                    <Reorder.Item
                       key={question.id}
+                      value={question}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}>
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      whileDrag={{ scale: 1.02, boxShadow: "0 8px 20px rgba(0,0,0,0.12)", zIndex: 50 }}
+                      className="list-none">
 
                       <Card
-                        className={`bg-white rounded-2xl shadow-sm transition-all cursor-pointer ${isHighlighted ?
+                        className={`bg-white rounded-2xl shadow-sm transition-all ${isHighlighted ?
                           'border-2 border-blue-400 shadow-lg shadow-blue-100 ring-2 ring-blue-100' :
                           'border border-gray-100'}`
                         }
@@ -1944,7 +1926,9 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <GripVertical className="w-4 h-4 text-gray-400" />
+                              <div className="cursor-grab active:cursor-grabbing p-1 -m-1 hover:bg-gray-100 rounded touch-none">
+                                <GripVertical className="w-4 h-4 text-gray-400" />
+                              </div>
                               <Badge className="bg-purple-100 text-purple-700 border-0 text-sm px-3 py-1">
                                 Q{index + 1}
                               </Badge>
@@ -1970,34 +1954,6 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                               question.question_type === 'choice_with_other' ? '객관+주관' :
                                                 question.question_type === 'branching_choice' ? '분기형' : '이미지선택'}
                               </Badge>
-                              {questions.length > 1 &&
-                                <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      moveQuestion(index, 'up');
-                                    }}
-                                    disabled={index === 0}
-                                    className="h-6 w-6 text-gray-500 disabled:opacity-30">
-
-                                    <ArrowUp className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      moveQuestion(index, 'down');
-                                    }}
-                                    disabled={index === questions.length - 1}
-                                    className="h-6 w-6 text-gray-500 disabled:opacity-30">
-
-                                    <ArrowDown className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              }
                             </div>
                             <Button
                               variant="ghost"
@@ -2114,7 +2070,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                           <CardContent className="pt-0 space-y-2">
                             <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200 mb-2">
                               <p className="text-xs text-emerald-700 font-medium">
-                                🔀 선택지별로 이동할 문항 번호를 지정합니다 (0 = 설문 종료, 비워두면 다음 문항)
+                                🔀 선택지별로 이동할 문항 번호를 지정합니다 (0 = 설문 종료, 비워두면 다음 문항, 이동 후 순차 진행)
                               </p>
                             </div>
                             {question.options.map((option, optIndex) =>
@@ -2173,7 +2129,7 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                                       }
                                       updateQuestion(question.id, { ...question, branch_targets: newBranchTargets });
                                     }}
-                                    placeholder="다음"
+                                    placeholder="숫자"
                                     disabled={!option}
                                     className="w-20 h-8 text-xs border-emerald-200 rounded-lg disabled:bg-gray-100" />
                                   <span className="text-xs text-gray-400">
@@ -2343,10 +2299,10 @@ ${usagePurpose ? `- 결과 활용 목적: ${usagePurpose}` : ''}
                           </CardContent>
                         }
                       </Card>
-                    </motion.div>);
+                    </Reorder.Item>);
                 }
                 )}
-              </AnimatePresence>
+              </Reorder.Group>
 
               <div className="grid grid-cols-2 gap-3 mt-6">
                 <button

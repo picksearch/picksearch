@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, User, Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import Logo from "@/assets/Logo_2.png";
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -65,7 +66,7 @@ export default function Signup() {
     const checkAuth = async () => {
       const isAuth = await auth.isAuthenticated();
       if (isAuth) {
-        navigate("/");
+        navigate("/clienthome");
       }
     };
     checkAuth();
@@ -150,7 +151,7 @@ export default function Signup() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -171,7 +172,7 @@ export default function Signup() {
               </p>
               <Button
                 onClick={() => navigate("/login")}
-                className="w-full h-12 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-xl font-bold"
+                className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold"
               >
                 로그인하기
               </Button>
@@ -183,21 +184,19 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <Card className="bg-white rounded-3xl shadow-xl border-0 overflow-hidden">
-          <div className="h-2 bg-gradient-to-r from-orange-500 to-pink-500" />
+          <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600" />
 
           <CardHeader className="text-center pb-2 pt-8">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4">
-              <span className="text-3xl">🔍</span>
-            </div>
+            <img src={Logo} alt="픽서치 로고" className="h-10 mx-auto mb-4" />
             <CardTitle className="text-2xl font-bold text-gray-900">
-              픽서치 회원가입
+              회원가입
             </CardTitle>
             <p className="text-gray-500 text-sm mt-2">
               정밀 타겟 데이터 수집 설문 플랫폼
@@ -257,7 +256,7 @@ export default function Signup() {
                     value={formData.fullName}
                     onChange={handleChange}
                     placeholder="이름을 입력하세요"
-                    className="pl-12 h-12 rounded-xl border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    className="pl-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -276,7 +275,7 @@ export default function Signup() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="이메일을 입력하세요"
-                    className="pl-12 h-12 rounded-xl border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    className="pl-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -295,7 +294,7 @@ export default function Signup() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="8자 이상 입력하세요"
-                    className="pl-12 pr-12 h-12 rounded-xl border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    className="pl-12 pr-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                   <button
@@ -325,7 +324,7 @@ export default function Signup() {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="비밀번호를 다시 입력하세요"
-                    className="pl-12 pr-12 h-12 rounded-xl border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                    className="pl-12 pr-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                   <button
@@ -352,8 +351,8 @@ export default function Signup() {
                     className="mt-0.5"
                   />
                   <label htmlFor="agreeTerms" className="text-sm text-gray-600">
-                    <span className="text-orange-600 font-medium">[필수]</span>{" "}
-                    <Link to="/terms" className="text-orange-600 hover:underline">
+                    <span className="text-blue-600 font-medium">[필수]</span>{" "}
+                    <Link to="/terms" className="text-blue-600 hover:underline">
                       이용약관
                     </Link>
                     에 동의합니다
@@ -368,8 +367,8 @@ export default function Signup() {
                     className="mt-0.5"
                   />
                   <label htmlFor="agreePrivacy" className="text-sm text-gray-600">
-                    <span className="text-orange-600 font-medium">[필수]</span>{" "}
-                    <Link to="/privacy" className="text-orange-600 hover:underline">
+                    <span className="text-blue-600 font-medium">[필수]</span>{" "}
+                    <Link to="/privacy" className="text-blue-600 hover:underline">
                       개인정보처리방침
                     </Link>
                     에 동의합니다
@@ -380,7 +379,7 @@ export default function Signup() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200"
+                className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200"
               >
                 {isLoading ? (
                   <>
@@ -398,7 +397,7 @@ export default function Signup() {
                 이미 계정이 있으신가요?{" "}
                 <Link
                   to="/login"
-                  className="text-orange-600 hover:text-orange-700 font-bold"
+                  className="text-blue-600 hover:text-blue-700 font-bold"
                 >
                   로그인
                 </Link>

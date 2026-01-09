@@ -2083,6 +2083,12 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
             </Card>
         }
 
+          {!aiReport && completedResponses.length > 0 &&
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-sm">설문 결과를 확인하기 위해 AI 분석 버튼을 눌러주세요.</p>
+            </div>
+          }
+
           {/* Hyper Precision Report Modal */}
           <AnimatePresence>
             {showHyperReport &&
@@ -2172,9 +2178,9 @@ ${JSON.stringify(structuredSurveyData, null, 2)}
                                     <title>초정밀 AI 분석 리포트</title>
                                     <style>
                                       body { font-family: 'Noto Sans KR', sans-serif; padding: 40px; line-height: 1.8; }
-                                      h1 { color: #7c3aed; font-size: 28px; margin-bottom: 30px; }
-                                      h2 { color: #7c3aed; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; font-size: 24px; }
-                                      h3 { color: #4f46e5; margin-top: 20px; font-size: 18px; }
+                                      h1 { color: #3182F6; font-size: 28px; margin-bottom: 30px; }
+                                      h2 { color: #3182F6; border-bottom: 2px solid #ddd; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; font-size: 24px; }
+                                      h3 { color: #2563eb; margin-top: 20px; font-size: 18px; }
                                       p, li { line-height: 1.8; color: #333; }
                                       ul { padding-left: 20px; margin: 15px 0; }
                                       strong { color: #000; font-weight: 700; }

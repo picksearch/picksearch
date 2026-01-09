@@ -1208,7 +1208,7 @@ export default function OrderManagement() {
                     </div>
                   )}
 
-                  {activeTab === 'live' && survey.status === 'live' && (
+                  {survey.status === 'live' && (
                     <Button
                       onClick={() => {
                         if (confirm('정말 이 설문을 종료하시겠습니까?')) {
