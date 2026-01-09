@@ -29,8 +29,34 @@ export const Response = {
     return data;
   },
 
-  // Update response
-  update: async (id, updates) => {
+  // Update response (secure version with session_id validation)
+  update: async (id, updates, sessionId = null) => {
+    // session_id가 제공된 경우 안전한 RPC 함수 사용
+    if (sessionId) {
+      const { data, error } = await supabase.rpc('update_response_safely', {
+        p_response_id: id,
+        p_session_id: sessionId,
+        p_answers: updates.answers || null,
+        p_status: updates.status || null
+      });
+
+      if (error) throw error;
+
+      // RPC 함수 결과 확인
+      if (data && !data.success) {
+        const errorMessages = {
+          'RESPONSE_NOT_FOUND': '응답을 찾을 수 없습니다.',
+          'SESSION_MISMATCH': '세션이 일치하지 않습니다.',
+          'ALREADY_COMPLETED': '이미 완료된 응답입니다.',
+          'RESPONSE_EXPIRED': '응답 시간이 만료되었습니다.'
+        };
+        throw new Error(errorMessages[data.error] || data.error);
+      }
+
+      return data;
+    }
+
+    // 기존 방식 (RLS 정책으로 보호됨)
     const { data, error } = await supabase
       .from('responses')
       .update({

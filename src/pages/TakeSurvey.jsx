@@ -325,7 +325,7 @@ export default function TakeSurvey() {
         status,
         secret_code: secretCode,
         last_activity: new Date().toISOString()
-      });
+      }, sessionId);
     },
   });
 
@@ -357,12 +357,12 @@ export default function TakeSurvey() {
       // CASE 1: 기존 ID가 있는 경우 업데이트 시도
       if (finalResponseId) {
         try {
-          await Response.update(finalResponseId, { 
-            answers: finalAnswers, 
+          await Response.update(finalResponseId, {
+            answers: finalAnswers,
             status: 'completed',
             secret_code: code,
             last_activity: new Date().toISOString()
-          });
+          }, sessionId);
           saveSuccess = true;
         } catch (updateError) {
           console.warn('Response update failed, falling back to create', updateError);
@@ -522,7 +522,7 @@ export default function TakeSurvey() {
           try {
             await Response.update(responseId, {
               status: 'abandoned'
-            });
+            }, sessionId);
 
             try {
               const targetParticipants = survey.target_participants ? Number(survey.target_participants) : Infinity;
