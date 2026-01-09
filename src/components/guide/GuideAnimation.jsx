@@ -175,9 +175,9 @@ export default function GuideAnimation() {
               className="w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center z-10"
             >
               {progress > 0 ? (
-                <RotateCcw className="w-8 h-8 text-orange-500 ml-1" />
+                <RotateCcw className="w-8 h-8 text-blue-500 ml-1" />
               ) : (
-                <Play className="w-8 h-8 text-orange-500 ml-1" fill="currentColor" />
+                <Play className="w-8 h-8 text-blue-500 ml-1" fill="currentColor" />
               )}
             </motion.div>
             <p className="mt-6 text-gray-600 font-bold z-10">

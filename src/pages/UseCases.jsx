@@ -20,6 +20,7 @@ export default function UseCases() {
       category: "신제품 출시",
       icon: <ShoppingBag className="w-5 h-5 text-pink-500" />,
       color: "bg-pink-100 text-pink-700",
+      gradient: "from-pink-500 to-pink-300",
       title: "2030 여성 타겟 뷰티 브랜드 A사",
       problem: "신제품 패키지 소재 결정의 어려움",
       solution: "타겟 설문으로 20-30대 여성 500명 대상 A/B 테스트 진행",
@@ -82,6 +83,7 @@ export default function UseCases() {
       category: "트렌드 조사",
       icon: <Zap className="w-5 h-5 text-purple-500" />,
       color: "bg-purple-100 text-purple-700",
+      gradient: "from-purple-500 to-purple-300",
       title: "패션 브랜드 E사",
       problem: "다음 시즌 스타일 라인 판단 어려움",
       solution: "10-40대 남여 500명 타겟으로 선호하는 스타일 조사",
@@ -126,6 +128,7 @@ export default function UseCases() {
       category: "시장 조사",
       icon: <Search className="w-5 h-5 text-blue-500" />,
       color: "bg-blue-100 text-blue-700",
+      gradient: "from-blue-500 to-blue-300",
       title: "건강기능식품 스타트업 B사",
       problem: "직장인들의 영양제 섭취 습관 파악 필요",
       solution: "직장인 타겟 상세 설정(3040/사무직) 후 생활 패턴 조사",
@@ -199,6 +202,7 @@ export default function UseCases() {
       category: "만족도 조사",
       icon: <Users className="w-5 h-5 text-green-500" />,
       color: "bg-green-100 text-green-700",
+      gradient: "from-green-500 to-green-300",
       title: "O2O 서비스 플랫폼 C사",
       problem: "앱 이탈률 증가 원인 불명",
       solution: "최근 3개월 내 접속 이력이 있는 고객 대상 심층 설문",
@@ -240,6 +244,7 @@ export default function UseCases() {
       category: "아이디어 검증",
       icon: <Lightbulb className="w-5 h-5 text-amber-500" />,
       color: "bg-amber-100 text-amber-700",
+      gradient: "from-amber-500 to-amber-300",
       title: "예비 창업자 D님",
       problem: "반려동물 수제 간식 사업성 검증",
       solution: "반려동물 보유 가구 타겟으로 구매 의향 및 적정 가격 조사",
@@ -292,6 +297,7 @@ export default function UseCases() {
       category: "서비스 기획",
       icon: <BarChart className="w-5 h-5 text-cyan-500" />,
       color: "bg-cyan-100 text-cyan-700",
+      gradient: "from-cyan-500 to-cyan-300",
       title: "생산성 앱 F사",
       problem: "유료 기능 개발 우선순위 결정",
       solution: "기존 무료 사용자 대상 '가장 필요한 기능' 투표 진행",
@@ -354,17 +360,17 @@ export default function UseCases() {
       </div>
 
       {/* Intro Text */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-100">
-        <h3 className="font-bold text-gray-800 mb-2">🎯 목표에 딱 맞는 설문 설계</h3>
-        <p className="text-sm text-gray-600 leading-relaxed">
-          실제 성공 사례를 참고하여 더 효과적인 설문을 만들어보세요.
-          <br/>
-          <span className="text-orange-600 font-bold">"설문 체험하기"</span>를 누르면 실제 사용된 설문을 직접 확인하실 수 있습니다.
-        </p>
+      <div className="px-4">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-orange-100">
+          <h3 className="font-bold text-gray-800 mb-2">🎯 목표에 딱 맞는 설문 설계</h3>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            실제 성공 사례를 참고하여 더 효과적인 설문을 만들어보세요.
+          </p>
+        </div>
       </div>
 
       {/* Case Studies */}
-      <div className="space-y-4">
+      <div className="px-4 space-y-6">
         {cases.map((item, index) => (
           <motion.div 
             key={index}
@@ -373,22 +379,13 @@ export default function UseCases() {
             transition={{ delay: index * 0.1 }}
           >
             <Card className="border-0 shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className={`h-2 bg-gradient-to-r ${item.color.replace('bg-', 'from-').replace('text-', 'to-').split(' ')[0]} to-gray-100`} />
+              <div className={`h-1.5 bg-gradient-to-r ${item.gradient}`} />
               <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center mb-3">
                   <Badge className={`${item.color} border-0 flex items-center gap-1 px-2 py-1`}>
                     {item.icon}
                     {item.category}
                   </Badge>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => handleTrySurvey(item.surveyData)}
-                    className="h-8 text-xs hover:bg-gray-100 text-gray-500"
-                  >
-                    <PlayCircle className="w-4 h-4 mr-1 text-gray-900" />
-                    설문 체험하기
-                  </Button>
                 </div>
                 
                 <h3 className="text-lg font-bold text-gray-900 mb-4">{item.title}</h3>

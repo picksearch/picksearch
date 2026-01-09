@@ -108,7 +108,7 @@ export default function Guide() {
       </div>
 
       {/* Video Section */}
-      <div className="mb-8">
+      <div className="px-4 mb-8">
         <Card className="overflow-hidden border-gray-100 shadow-sm">
           <GuideAnimation />
           <div className="p-4 bg-white">
@@ -119,7 +119,7 @@ export default function Guide() {
       </div>
 
       {/* Content */}
-      <div className="space-y-8">
+      <div className="px-4 space-y-8">
         {steps.map((step, index) =>
           <div key={index} className="relative pl-4">
             {/* Connecting Line */}
@@ -157,7 +157,8 @@ export default function Guide() {
         </div>
 
         {/* 개인정보 수집 안내 */}
-        <div className="mt-10 bg-red-50 border-2 border-red-200 rounded-2xl p-5">
+        <div className="px-4 mt-10">
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5">
         <h3 className="text-lg font-bold text-red-700 mb-2">{importantNote.title}</h3>
         <p className="text-sm text-red-600 mb-4">{importantNote.description}</p>
         <div className="bg-white rounded-xl p-4 space-y-3">
@@ -174,16 +175,18 @@ export default function Guide() {
             )}
         </div>
         </div>
+        </div>
 
         {/* 랜딩페이지 활용 TIP */}
-        <div className="mt-6 bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-2xl p-5">
-        <h3 className="text-lg font-bold text-purple-700 mb-2">{landingPageTip.title}</h3>
-        <p className="text-sm text-purple-600 mb-4">{landingPageTip.description}</p>
+        <div className="px-4 mt-6">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5">
+        <h3 className="text-lg font-bold text-blue-700 mb-2">{landingPageTip.title}</h3>
+        <p className="text-sm text-blue-600 mb-4">{landingPageTip.description}</p>
         <div className="bg-white rounded-xl p-4 space-y-3">
           {landingPageTip.details.map((detail, idx) =>
             <div key={idx} className="flex items-start gap-2">
-              <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-purple-600 text-xs font-bold">{idx + 1}</span>
+              <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-blue-600 text-xs font-bold">{idx + 1}</span>
               </div>
               <div>
                 <span className="text-sm font-bold text-gray-800 block">{detail.label}</span>
@@ -191,6 +194,7 @@ export default function Guide() {
               </div>
             </div>
             )}
+        </div>
         </div>
         </div>
 
